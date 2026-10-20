@@ -128,17 +128,18 @@ function vendorCalc() {
 }
 
 function vendorInsert() {
-  const { x, q, m, cost, price } = vendorCalcValues();
+  const { x, q, m: mult, cost, price } = vendorCalcValues();
   if (!q) { alert('수량을 넣어주세요.'); return; }
   const target = document.getElementById('vd-t').value;
   const replace = document.getElementById('vd-replace')?.checked;
   const qtyText = `${q}${x.u}`;
   const desc = [x.spec && x.u !== '평' ? x.spec : '', x.u === '평' ? `${qtyText} 시공` : q > 1 ? qtyText : ''].filter(Boolean).join(' · ');
-  const note = `업체 원가 ${fmt(cost)} (${x.vendor.replace(/ \(.*\)$/, '')} ${x.date || ''} ${fmt(vNet(x))}/${x.u} × ${q}) × ${m}배`;
+  const note = `업체 원가 ${fmt(cost)} (${x.vendor.replace(/ \(.*\)$/, '')} ${x.date || ''} ${fmt(vNet(x))}/${x.u} × ${q}) × ${mult}배`;
   const name = x.n;
 
+  const m = `${x.vendor.replace(/ \(.*\)$/, '')} ${fmt(vNet(x))}/${x.u}×${q}`; // 상세내역
   if (target === '__opt') {
-    tplState.options.push({ n: name, d: desc, p: price, f: note, on: true });
+    tplState.options.push({ n: name, d: desc, p: price, f: note, on: true, c: cost, m });
   } else {
     let blk = tplState.blocks.find(b => b.proc === target);
     if (!blk) {
@@ -147,8 +148,8 @@ function vendorInsert() {
       if (at < 0) tplState.blocks.push(blk); else tplState.blocks.splice(at, 0, blk);
     }
     const line = replace && blk.items.find(i => i.n === '바닥재');
-    if (line) Object.assign(line, { d: `${name}${desc ? ' · ' + desc : ''}`, p: price, on: true, note, f: '' });
-    else blk.items.push({ n: name, d: desc, p: price, on: true, f: '', note });
+    if (line) Object.assign(line, { d: `${name}${desc ? ' · ' + desc : ''}`, p: price, on: true, note, f: '', c: cost, m });
+    else blk.items.push({ n: name, d: desc, p: price, on: true, f: '', note, c: cost, m });
   }
   closeVendor();
   renderTpl(); calc();

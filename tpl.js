@@ -50,9 +50,12 @@ function tplFromTemplate(t) {
       items: b.items.map(i => ({
         n: i.n, d: i.d || '', p: i.p == null ? null : Number(i.p),
         f: i.f || '', note: i.note || '', on: i.on !== false,
+        c: i.c == null || i.c === '' ? null : Number(i.c), m: i.m || '', // 원가·상세내역 (내부용)
+        ...(i.bd ? { bd: i.bd, bdOrig: i.bdOrig } : {}),
       })),
     })),
-    options: (t.options || []).map(o => ({ n: o.n, d: o.d || '', p: Number(o.p) || 0, f: o.f || '', on: !!o.on })),
+    options: (t.options || []).map(o => ({ n: o.n, d: o.d || '', p: Number(o.p) || 0, f: o.f || '', on: !!o.on,
+      c: o.c == null || o.c === '' ? null : Number(o.c), m: o.m || '', ...(o.bd ? { bd: o.bd, bdOrig: o.bdOrig } : {}) })),
   };
 }
 
@@ -68,8 +71,19 @@ function tplPack(t) {
   });
   return {
     key: t.key, packed: 1, feeRate: t.feeRate,
-    b: t.blocks.map(bl => bl.items.map(i => [i.on ? 1 : 0, i.p])),
-    o: t.options.map(o => [o.on ? 1 : 0, o.p]),
+    // [켜짐, 금액] + 원가·상세내역이 기본값과 다르면 [.., 원가, 상세내역]
+    b: t.blocks.map((bl, bi) => bl.items.map((i, ii) => {
+      const bi0 = base.blocks[bi]?.items[ii] || {};
+      const v = [i.on ? 1 : 0, i.p];
+      if ((i.c ?? null) !== (bi0.c ?? null) || (i.m || '') !== (bi0.m || '')) v.push(i.c ?? null, i.m || '');
+      return v;
+    })),
+    o: t.options.map((o, oi) => {
+      const o0 = base.options[oi] || {};
+      const v = [o.on ? 1 : 0, o.p];
+      if ((o.c ?? null) !== (o0.c ?? null) || (o.m || '') !== (o0.m || '')) v.push(o.c ?? null, o.m || '');
+      return v;
+    }),
     bx, nb: t.blocks.length, fu: t.furn || null,
     // 업체 단가표 등으로 옵션이 늘어난 경우 옵션 전체를 담음
     ox: (t.options.length !== base.options.length || t.options.some((o, i) => o.n !== base.options[i].n || o.bd)) ? t.options : null,
@@ -82,9 +96,9 @@ function tplUnpack(t) {
   const s = tplFromTemplate(base);
   s.feeRate = t.feeRate || 0;
   s.blocks.forEach((bl, bi) => bl.items.forEach((i, ii) => {
-    const v = t.b?.[bi]?.[ii]; if (v) { i.on = !!v[0]; i.p = v[1]; }
+    const v = t.b?.[bi]?.[ii]; if (v) { i.on = !!v[0]; i.p = v[1]; if (v.length > 2) { i.c = v[2]; i.m = v[3] || ''; } }
   }));
-  s.options.forEach((o, oi) => { const v = t.o?.[oi]; if (v) { o.on = !!v[0]; o.p = v[1]; } });
+  s.options.forEach((o, oi) => { const v = t.o?.[oi]; if (v) { o.on = !!v[0]; o.p = v[1]; if (v.length > 2) { o.c = v[2]; o.m = v[3] || ''; } } });
   if (t.nb) s.blocks.length = t.nb; // 공정이 새로 생기거나 빠진 경우 개수 맞춤
   Object.entries(t.bx || {}).forEach(([bi, bl]) => { s.blocks[bi] = bl; });
   s.blocks = s.blocks.filter(Boolean);

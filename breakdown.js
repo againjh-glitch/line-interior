@@ -41,6 +41,125 @@ const BD_PRESETS = {
   },
 };
 BD_PRESETS['문짝'] = BD_PRESETS['문짝 교체'];
+
+// 지난 견적서 「원가 · 상세내역」 열에 적힌 단가 (업체 단가표에 없는 인건비·자재비) — g: 공정 묶음
+const BD_COMMON = [
+  { g: '욕실', k: '자재', n: '욕실 타일 자재비 (1칸)', u: '칸', p: 1300000, src: '양우 605호 「자재비 130」 · 304호 85 · 주공 160~180' },
+  { g: '욕실', k: '인건비', n: '타일공', u: '품', p: 350000, src: '「타일 1품」 35만 · 「타일 2품 70」' },
+  { g: '욕실', k: '인건비', n: '도기 세팅 (기본)', u: '칸', p: 250000, src: '「도기세팅(기본25+휴젠뜨3+천장기본)」 · 중흥 34' },
+  { g: '욕실', k: '자재', n: '휴젠뜨 환풍기', u: '개', p: 30000, src: '「기본25+휴젠뜨3」' },
+  { g: '욕실', k: '인건비', n: '메지', u: '칸', p: 220000, src: '「메지 - 22만」' },
+  { g: '욕실', k: '기타', n: '방수 (1칸)', u: '칸', p: 200000, src: '「2칸 방수 40만」' },
+  { g: '욕실', k: '자재', n: '젠다이 (벽돌+미장)', u: '식', p: 350000, src: '양우 304호 「35만 (벽돌+미장 등)」' },
+  { g: '욕실', k: '자재', n: '도기 (변기·세면대)', u: '세트', p: 280000, src: '「변기, 세면대 나무 2개씩 : 56만」' },
+  { g: '타일', k: '인건비', n: '타일공', u: '품', p: 350000, src: '「인건비 1품 : 36만」 · 「타일 2품 70」' },
+  { g: '타일', k: '자재', n: '현관 바닥 타일', u: '박스', p: 25000, src: '「25000*3박스 + 부자재」' },
+  { g: '타일', k: '자재', n: '주방 벽 타일', u: '박스', p: 15000, src: '「15000*4박스 + 부자재」' },
+  { g: '타일', k: '자재', n: '발코니·세탁실 타일', u: '박스', p: 13000, src: '「13000*6(세탁+건조)」' },
+  { g: '타일', k: '자재', n: '1200×600 포세린 타일', u: '박스', p: 35000, src: '「1200*600 24박스(84만)」' },
+  { g: '철거', k: '인건비', n: '철거 인건비', u: '품', p: 250000, src: '「인건비 25만*4품」 · 「철거 2명(50)」' },
+  { g: '철거', k: '기타', n: '폐기물 (1회)', u: '회', p: 200000, src: '「28일 : 25만 / 14일 : 23만」 · 16~19만' },
+  { g: '철거', k: '인건비', n: '데모도 (보조)', u: '품', p: 200000, src: '「데모도 3품」 — 단가는 현장마다' },
+  { g: '목공', k: '인건비', n: '목수', u: '품', p: null, src: '품 단가 기본 35만 (마지막에 쓴 값)' },
+  { g: '목공', k: '자재', n: '목재 자재 (각재·합판)', u: '식', p: 200000, src: '「목수1품+자재비20만」' },
+  { g: '필름', k: '인건비', n: '필름공', u: '품', p: 250000, src: '「필름 25만*8품 + 40만」' },
+  { g: '필름', k: '자재', n: '필름 자재', u: '식', p: 400000, src: '「+ 40만」 (평당 10~12만)' },
+  { g: '도배', k: '인건비', n: '도배공', u: '품', p: 250000, src: '「25만*4품」' },
+  { g: '도배', k: '자재', n: '실크벽지 (신한)', u: '평', p: 7000, src: '「신한 80평 7000 [56만]」' },
+  { g: '기타', k: '기타', n: '공사신고·관리비', u: '식', p: 150000, src: '「관15원+알바10만+보양재」' },
+  { g: '기타', k: '인건비', n: '알바 (보양·정리)', u: '회', p: 100000, src: '「알바10만」' },
+];
+
+// 공정·항목 → 관련 자재 (업체 단가표 공정 + 위 BD_COMMON 묶음 + 가구 단가)
+function bdRelated(proc, n) {
+  const t = `${proc} ${n}`;
+  if (/욕실|화장실/.test(proc) || /욕실|욕조|양변기|세면|도기|젠다이/.test(n)) return { cats: ['욕실', '부자재'], g: ['욕실'], label: '욕실' };
+  if (proc === '타일' || /타일/.test(n)) return { cats: ['부자재'], g: ['타일'], label: '타일' };
+  if (/철거|폐기물|샌딩|단차/.test(t)) return { cats: ['철거'], g: ['철거'], label: '철거' };
+  if (proc === '가구' || /싱크|붙박이|신발장|가구|수납/.test(n)) return { cats: [], g: [], furn: true, label: '가구' };
+  if (/도배|벽지/.test(n)) return { cats: ['도배', '부자재'], g: ['도배'], label: '도배' };
+  if (/바닥|마루|장판|데코/.test(n)) return { cats: ['바닥재', '철거'], g: [], label: '바닥재' };
+  if (proc === '도배·바닥재') return { cats: ['도배', '바닥재', '부자재'], g: ['도배'], label: '도배·바닥재' };
+  if (/중문/.test(t)) return { cats: ['중문', '문·몰딩'], g: ['목공'], label: '중문' };
+  if (/도장|탄성|페인트/.test(t)) return { cats: ['도장'], g: [], label: '도장' };
+  if (/필름/.test(t)) return { cats: [], g: ['필름'], label: '필름' };
+  if (/전기|조명|전등|콘센트|스위치|감지기/.test(t)) return { cats: [], g: ['전기'], label: '전기·조명' };
+  if (/문|몰딩|걸레/.test(n)) return { cats: ['문·몰딩', '부자재'], g: ['목공'], label: '문·몰딩' };
+  if (proc === '목공' || /천장|목공|가벽|단열/.test(n)) return { cats: ['목공 자재', '문·몰딩', '부자재'], g: ['목공'], label: '목공' };
+  if (proc === '기타') return { cats: ['부자재'], g: ['기타'], label: '기타' };
+  return { cats: [], g: [], label: proc };
+}
+
+// 고를 수 있는 자재 전체 목록 (업체 단가표 + 지난 견적 단가 + 가구 단가)
+function bdCatalog() {
+  const out = [];
+  (typeof VENDOR_PRICES !== 'undefined' ? VENDOR_PRICES : []).forEach((x, i) => out.push({
+    id: 'v' + i, src: 'v', cat: x.cat, k: x.cat === '부자재' ? '부자재' : '자재', n: x.n, spec: x.spec || '', u: x.u,
+    p: vNet(x), from: `${x.vendor.replace(/ \(.*\)$/, '')}${x.date ? ' ' + x.date : ''}`, label: bdVendorLabel(x) }));
+  BD_COMMON.forEach((x, i) => out.push({ id: 'c' + i, src: 'c', cat: x.g, k: x.k, n: x.n, spec: '', u: x.u,
+    p: x.p == null ? bdLaborRate() : x.p, from: '지난 견적 ' + x.src, label: x.n }));
+  (typeof FURN_ROWS !== 'undefined' ? FURN_ROWS : []).forEach(r => r.kinds.forEach(([kn, p], j) => out.push({
+    id: `f${r.key}${j}`, src: 'f', cat: '가구', k: '자재', n: kn ? `${r.n} (${kn})` : r.n, spec: '', u: r.u, p,
+    from: '코렉스 퍼니처 단가' + (r.min ? ` · 최소 ${fmt(r.min)}` : ''), label: kn ? `${r.n} (${kn})` : r.n })));
+  return out;
+}
+let bdShowAll = false;
+let bdPickQuery = '';
+function bdPickRows() {
+  const item = bdTargetItem();
+  const proc = bdTarget.kind === 'o' ? '선택 옵션' : tplState.blocks[bdTarget.bi].proc;
+  const rel = bdRelated(proc, item.n);
+  const q = bdPickQuery.trim().toLowerCase();
+  const all = bdCatalog();
+  const related = all.filter(x => x.src === 'v' ? rel.cats.includes(x.cat) : x.src === 'c' ? rel.g.includes(x.cat) : !!rel.furn);
+  // 지난 견적 단가 → 이 공정 업체 단가 (rel.cats 순서) → 부자재 순으로
+  const rank = x => x.src === 'c' ? -1 : x.src === 'f' ? 0 : rel.cats.indexOf(x.cat);
+  related.sort((a, b) => rank(a) - rank(b));
+  const base = bdShowAll || !related.length ? all : related;
+  return { rel, related, rows: base.filter(x => !q || [x.n, x.spec, x.from, x.cat].join(' ').toLowerCase().includes(q)) };
+}
+function bdPickHtml() {
+  const { rel, related, rows } = bdPickRows();
+  const showingAll = bdShowAll || !related.length;
+  let html = '', grp = null;
+  rows.slice(0, 400).forEach(x => {
+    const g = x.src === 'c' ? '지난 견적서 단가 (원가 · 상세내역 열)' : x.src === 'f' ? '가구 (코렉스 퍼니처)' : `${x.cat} · ${x.from}`;
+    if (g !== grp) { grp = g; html += `<div class="bd-pk-g">${esc(g)}</div>`; }
+    html += `<div class="bd-pk-row"><span class="bd-pk-k k-${esc(x.k)}">${esc(x.k)}</span>
+      <span class="bd-pk-n"><b>${esc(x.n)}</b>${x.spec ? ` <small>${esc(x.spec)}</small>` : ''}${x.src === 'c' ? `<small class="bd-pk-src">${esc(x.from)}</small>` : ''}</span>
+      <span class="bd-pk-p">${fmt(x.p)}<small>/${esc(x.u)}</small></span>
+      <button class="bd-pk-add" onclick="bdPickAdd('${x.id}')" aria-label="${esc(x.n)} 넣기">＋</button></div>`;
+  });
+  return `<div class="bd-pk">
+    <div class="bd-pk-top">
+      <b>📦 ${showingAll ? '전체 자재' : `「${esc(rel.label)}」 관련 자재`}</b> <small>${rows.length}개</small>
+      <input id="bd-pk-q" type="search" placeholder="🔍 검색" value="${esc(bdPickQuery)}" oninput="bdPickSearch(this.value)" aria-label="자재 검색">
+      ${related.length ? `<button class="bd-pk-all" onclick="bdToggleAll()">${bdShowAll ? '관련 자재만 보기' : '전체 자재 보기'}</button>` : ''}
+    </div>
+    ${!related.length ? `<p class="bd-pk-empty">「${esc(rel.label)}」에 맞는 업체 단가가 아직 없어서 전체 목록을 보여드려요. 없는 건 아래 + 자재로 직접 넣으세요.</p>` : ''}
+    <div class="bd-pk-list" id="bd-pk-list">${html || '<p class="bd-pk-empty">찾는 자재가 없습니다. 「전체 자재 보기」를 누르거나 직접 입력하세요.</p>'}</div>
+  </div>`;
+}
+function bdRenderPick() { const el = document.getElementById('bd-pick'); if (el) el.innerHTML = bdPickHtml(); }
+function bdToggleAll() { bdShowAll = !bdShowAll; bdRenderPick(); }
+function bdPickSearch(v) {
+  bdPickQuery = v;
+  const el = document.getElementById('bd-pk-list');
+  if (!el) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = bdPickHtml();
+  el.innerHTML = tmp.querySelector('#bd-pk-list').innerHTML;
+  const cnt = document.querySelector('.bd-pk-top small'); if (cnt) cnt.textContent = tmp.querySelector('.bd-pk-top small').textContent;
+}
+function bdPickAdd(id) {
+  const x = bdCatalog().find(c => c.id === id);
+  if (!x) return;
+  // 비어 있는 같은 구분 줄이 있으면 거기에, 없으면 새 줄
+  const empty = bdState.rows.find(r => r.k === x.k && !r.n && !Number(r.p));
+  const row = { k: x.k, n: x.label, u: x.u, p: x.p, q: 1, per: false, memo: x.src === 'c' ? x.from : '' };
+  if (empty) Object.assign(empty, row); else bdState.rows.push(row);
+  renderBreakdown();
+  showToast(`＋ ${x.n} 넣었습니다 — 수량을 맞춰주세요`);
+}
 BD_PRESETS['몰딩'] = BD_PRESETS['몰딩·걸레받이'];
 
 let bdTarget = null;   // { kind:'b'|'o', bi, ii }
@@ -69,14 +188,22 @@ function bdNewState(item) {
       }),
     };
   }
+  // 공정에 맞는 인건비 줄 (욕실·타일 → 타일공, 철거 → 철거 인건비, 도배 → 도배공 …, 그 외 목수)
+  const proc = bdTarget?.kind === 'b' ? tplState.blocks[bdTarget.bi].proc : '';
+  const rel = bdRelated(proc, item.n);
+  const lab = BD_COMMON.find(x => rel.g.includes(x.g) && x.k === '인건비');
+  const labRow = lab && lab.p != null
+    ? { k: '인건비', n: lab.n, u: lab.u, p: lab.p, q: 1, per: false, memo: '지난 견적 ' + lab.src }
+    : { k: '인건비', n: '목수', u: '품', p: labor, q: 1, per: false, memo: '' };
   return { count: 0, mult: BD_MULT_DEFAULT, preset: '', desc: item.d || '',
-    rows: [{ k: '자재', n: '', u: '', p: 0, q: 1, per: false, memo: '' }, { k: '인건비', n: '목수', u: '품', p: labor, q: 1, per: false, memo: '' }] };
+    rows: [{ k: '자재', n: '', u: '', p: 0, q: 1, per: false, memo: '' }, labRow] };
 }
 
 function openBreakdown(kind, bi, ii) {
   bdTarget = { kind, bi, ii };
   const item = bdTargetItem();
   bdState = item.bd ? JSON.parse(JSON.stringify(item.bd)) : bdNewState(item);
+  bdShowAll = false; bdPickQuery = '';
   renderBreakdown();
   document.getElementById('bd-modal').classList.remove('hidden');
 }
@@ -93,8 +220,7 @@ function bdTotals() {
 function renderBreakdown() {
   const item = bdTargetItem();
   const preset = BD_PRESETS[bdState.preset];
-  const list = (typeof VENDOR_PRICES !== 'undefined' ? VENDOR_PRICES : [])
-    .filter(x => ['문·몰딩', '목공 자재', '부자재', '도배', '바닥재', '철거', '욕실', '도장', '중문'].includes(x.cat));
+  const list = bdPickRows().rows; // 자동완성도 지금 보이는 목록(관련 자재 / 전체)과 같게
   // 공정 맨 윗줄이면 아래 「포함」 줄 값도 이 금액에 들어 있음
   const bundled = bdTarget.kind === 'b' && typeof xsIsBlockHead === 'function' && xsIsBlockHead(tplState.blocks[bdTarget.bi], bdTarget.ii)
     ? tplState.blocks[bdTarget.bi].items.filter(x => x.p == null && x.on).map(x => x.n) : [];
@@ -110,7 +236,7 @@ function renderBreakdown() {
       <thead><tr><th>구분</th><th>내용 (자재는 업체 단가표에서 고르기)</th><th>단위</th><th>단가 (원가)</th><th>수량</th><th>금액</th><th></th></tr></thead>
       <tbody>${bdState.rows.map((r, i) => `<tr data-i="${i}">
         <td class="xs-in"><select onchange="bdSet(${i},'k',this.value)" aria-label="구분">${BD_KINDS.map(k => `<option${k === r.k ? ' selected' : ''}>${k}</option>`).join('')}</select></td>
-        <td class="xs-in"><input type="text" ${r.k === '자재' ? 'list="bd-vendor-list"' : ''} value="${esc(r.n)}" placeholder="${r.k === '자재' ? '업체 단가표에서 고르거나 직접 입력' : r.k === '인건비' ? '목수 / 타일공 / 보조 등' : '내용'}" onchange="bdName(${i},this.value)" aria-label="내용">
+        <td class="xs-in"><input type="text" list="bd-vendor-list" value="${esc(r.n)}" placeholder="${r.k === '자재' ? '업체 단가표에서 고르거나 직접 입력' : r.k === '인건비' ? '목수 / 타일공 / 보조 등' : '내용'}" onchange="bdName(${i},this.value)" aria-label="내용">
           ${r.memo ? `<div class="bd-memo">${esc(r.memo)}</div>` : ''}</td>
         <td class="xs-in"><input type="text" value="${esc(r.u)}" onchange="bdSet(${i},'u',this.value)" aria-label="단위" style="text-align:center"></td>
         <td class="xs-in xs-num"><input class="xs-money" type="text" inputmode="numeric" value="${r.p ? fmt(r.p) : ''}" placeholder="0" onfocus="this.select()" onchange="bdSet(${i},'p',parseWon(this.value));this.value=this.value?fmt(parseWon(this.value)):''" aria-label="단가"></td>
@@ -125,7 +251,8 @@ function renderBreakdown() {
         <tr class="xs-sub fu-grand"><th colspan="5">견적가 (만원 단위 올림)</th><td class="xs-num" id="bd-price"></td><td></td></tr>
       </tfoot>
     </table></div>
-    <datalist id="bd-vendor-list">${list.map(x => `<option value="${esc(bdVendorLabel(x))}">${fmt(vNet(x))}/${esc(x.u)}</option>`).join('')}</datalist>
+    <div id="bd-pick">${bdPickHtml()}</div>
+    <datalist id="bd-vendor-list">${list.map(x => `<option value="${esc(x.label)}">${fmt(x.p)}/${esc(x.u)}</option>`).join('')}</datalist>
     <label class="bd-desc">고객 견적서에 보일 내용<input id="bd-desc" type="text" value="${esc(bdState.desc)}" oninput="bdState.desc=this.value"></label>
     ${preset?.tip ? `<p class="fu-note">💡 ${esc(preset.tip)}</p>` : ''}
     <div class="fu-actions">
@@ -159,8 +286,8 @@ function bdSet(i, key, v) {
 function bdName(i, v) {
   const r = bdState.rows[i];
   r.n = v;
-  const x = r.k === '자재' && bdVendorByLabel(v);
-  if (x) { r.p = vNet(x); r.u = x.u; renderBreakdown(); return; }
+  const x = bdCatalog().find(c => c.label === v);
+  if (x) { r.p = x.p; r.u = x.u; if (x.src === 'c') r.memo = x.from; renderBreakdown(); return; }
   bdFill();
 }
 function bdCount(v) {
@@ -194,11 +321,17 @@ function bdNoteText() {
   return `내역: ${parts.join(' + ')} = 원가 ${fmt(cost)} × ${bdState.mult}배`;
 }
 
+// 시트 「상세내역」 칸에 들어갈 짧은 메모 (예: 예림 민자 문짝 7짝 + 경첩·손잡이 7개 + 목수 1품)
+function bdMemoText() {
+  return bdState.rows.filter(r => bdRowCost(r)).map(r => `${(r.n || r.k).split(' · ')[0]} ${r.q}${r.u || ''}`).join(' + ').slice(0, 120);
+}
 function applyBreakdown() {
   const { cost, price } = bdTotals();
   if (!cost) { alert('단가와 수량을 넣어주세요.'); return; }
   const item = bdTargetItem();
-  if (!item.bd) item.bdOrig = { p: item.p, d: item.d, note: item.note || '', f: item.f || '' };
+  if (!item.bd) item.bdOrig = { p: item.p, d: item.d, note: item.note || '', f: item.f || '', c: item.c ?? null, m: item.m || '' };
+  item.c = cost;
+  item.m = bdMemoText();
   item.bd = JSON.parse(JSON.stringify(bdState));
   item.p = price;
   item.on = true;

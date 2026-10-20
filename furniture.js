@@ -184,6 +184,7 @@ function applyFurn() {
   const blk = tplState.blocks[furnBlockIndex()];
   blk.items = lines.map(l => ({
     n: l.n, d: l.d, p: furnPrice(l.cost), on: true, f: '',
+    c: l.cost, m: `코렉스 단가 기준 예상 원가`,
     note: `업체 예상 원가 ${fmt(l.cost)} × ${f.mult}배`,
   }));
   blk.range = blk.range || '';
