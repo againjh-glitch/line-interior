@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>인테리어 견적 계산기 — 라인 인테리어</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+</head>
+<body>
+<div class="top-section">
+  <div class="top-inner">
+    <div class="top-title-row">
+      <div class="top-logo">🏠</div>
+      <div class="top-title-text">
+        <h1>인테리어 견적 계산기</h1>
+        <p class="sub">항목 선택 후 수량 입력 → 자동 견적 계산</p>
+      </div>
+      <div class="top-pyung-box">
+        <label for="pyung">평수</label>
+        <input type="number" id="pyung" value="32" min="1" max="200" step="1">
+        <span class="pyung-unit">평형</span>
+        <span id="sqm" class="sqm-text"></span>
+      </div>
+    </div>
+    <div class="client-rows">
+      <div class="client-row">
+        <div class="client-field"><label>고객명</label><input type="text" id="clientName" placeholder="홍길동 님"></div>
+        <div class="client-field"><label>연락처</label><input type="text" id="clientPhone" placeholder="010-0000-0000"></div>
+        <div class="client-field"><label>주소 / 평형</label><input type="text" id="clientAddr" placeholder="소사본동 삼익 32평"></div>
+      </div>
+      <div class="client-row">
+        <div class="client-field"><label>시공 예상기간</label><input type="text" id="clientPeriod" placeholder="4주"></div>
+        <div class="client-field"><label>특이사항</label><input type="text" id="clientNote" placeholder="현장 특이사항"></div>
+        <div class="client-field"><label>견적서 작성일</label><input type="date" id="clientDate"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <!-- 일반 견적 모드 -->
+  <div id="normal-mode">
+    <div class="tabs-row">
+      <div class="tabs" id="tabs"></div>
+      <button class="yangu-switch-btn" id="btn-yangu-mode" onclick="switchToYangu()">
+        🏢 양우아파트 견적
+      </button>
+      <button class="tpl-switch-btn" id="btn-tpl-mode" onclick="enterTplMode()">
+        📋 아파트별 기본 견적서
+      </button>
+    </div>
+    <div id="content"></div>
+  </div>
+
+  <!-- 아파트별 기본 견적서 모드 (tpl.js) -->
+  <div id="tpl-mode" class="hidden">
+    <div class="tpl-mode-header">
+      <div class="tpl-mode-title">
+        <span class="tpl-mode-icon">📋</span>
+        <div>
+          <div class="tpl-mode-name">아파트별 기본 견적서</div>
+          <div class="tpl-mode-sub">기존 견적 26건에서 뽑은 기본 구성 + 현장별 특이사항</div>
+        </div>
+      </div>
+      <button class="yangu-back-btn" onclick="exitTplMode()">← 일반 견적으로</button>
+    </div>
+    <div id="tpl-content"></div>
+  </div>
+
+  <!-- 양우아파트 독립 모드 -->
+  <div id="yangu-mode" class="hidden">
+    <div class="yangu-mode-header">
+      <div class="yangu-mode-title">
+        <span class="yangu-mode-icon">🏢</span>
+        <div>
+          <div class="yangu-mode-name">양우아파트 견적 계산기</div>
+          <div class="yangu-mode-sub">32평 (105㎡) 기준 · 독립 계산</div>
+        </div>
+      </div>
+      <button class="yangu-back-btn" onclick="switchToNormal()">← 일반 견적으로</button>
+    </div>
+    <div id="yangu-content"></div>
+  </div>
+
+  <!-- 특이사항 (모든 모드 공통, tpl.js) -->
+  <div class="sp-panel" id="sp-panel"></div>
+
+  <!-- 견적 요약 (공통) -->
+  <div class="summary">
+    <div class="summary-header">
+      <span class="summary-title" id="summary-title">견적 요약</span>
+      <button class="btn-reset" id="btn-reset">초기화</button>
+    </div>
+    <div class="sgrid" id="scards"></div>
+    <div class="srows" id="srows"></div>
+    <p class="note">* 부가세 별도 / 실제 견적은 현장 방문 후 변동 가능</p>
+  </div>
+
+  <!-- 계약 조건 비율 설정 -->
+  <div class="pay-ratio-box-outer">
+    <span class="pay-ratio-title">💰 계약 조건 비율 설정</span>
+    <div class="pay-ratio-inputs">
+      <div class="pay-ratio-field">
+        <label>계약금 (%)</label>
+        <input type="number" id="pay-deposit" value="10" min="0" max="100" oninput="updatePayRatio()">
+      </div>
+      <span class="pay-ratio-plus">+</span>
+      <div class="pay-ratio-field">
+        <label>중도금 (%)</label>
+        <input type="number" id="pay-mid" value="40" min="0" max="100" oninput="updatePayRatio()">
+      </div>
+      <span class="pay-ratio-plus">+</span>
+      <div class="pay-ratio-field">
+        <label>잔금 (%)</label>
+        <input type="number" id="pay-final" value="50" min="0" max="100" oninput="updatePayRatio()">
+      </div>
+      <span class="pay-ratio-eq">= <strong id="pay-sum">100</strong>%</span>
+    </div>
+    <span id="pay-ratio-err" class="pay-ratio-err"></span>
+  </div>
+
+  <!-- 견적서 액션 버튼 -->
+  <div class="quote-actions">
+    <div class="quote-actions-label">저장 / 고객에게 보내기</div>
+    <button class="btn-action btn-save"  id="btn-save">💾 저장하고 고객에게 보내기</button>
+    <button class="btn-action btn-send"  id="btn-send">📤 고객용 링크만 만들기</button>
+    <button class="btn-action btn-load"  id="btn-load">📂 불러오기</button>
+    <button class="btn-action btn-share" id="btn-share" title="수정 가능한 계산기 화면 그대로 공유 (직원·가족용)">🔗 작업 화면 공유</button>
+  </div>
+  <div class="quote-actions" style="margin-top:8px">
+    <div class="quote-actions-label">견적서 출력</div>
+    <button class="btn-action btn-excel"        id="btn-excel">⬇ 엑셀 저장</button>
+    <button class="btn-action btn-print-detail" id="btn-print-detail">🖨 상세 견적서</button>
+    <button class="btn-action btn-print-simple" id="btn-print-simple">🖨 요약 견적서</button>
+  </div>
+
+  <!-- 불러오기 모달 -->
+  <div id="load-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">📂 저장된 견적 불러오기</span>
+        <button class="modal-close" id="load-modal-close">✕</button>
+      </div>
+      <div class="backup-bar">
+        <button class="backup-btn" onclick="exportAll()">⬇ 백업 내보내기</button>
+        <button class="backup-btn" onclick="document.getElementById('backup-file').click()">⬆ 백업 가져오기</button>
+        <input type="file" id="backup-file" accept=".json,application/json" hidden>
+        <span class="backup-hint">다른 기기·브라우저로 견적을 옮길 때 사용</span>
+      </div>
+      <div id="saved-list" class="saved-list"></div>
+    </div>
+  </div>
+
+  <!-- 고객에게 보내기 모달 (send.js) -->
+  <div id="send-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">📤 고객에게 견적서 보내기</span>
+        <button class="modal-close" onclick="closeSendModal()">✕</button>
+      </div>
+      <div id="send-body" class="saved-list"></div>
+    </div>
+  </div>
+
+  <!-- 공통 항목 추출 모달 (tpl.js) -->
+  <div id="extract-modal" class="modal-overlay hidden">
+    <div class="modal-box modal-wide">
+      <div class="modal-header">
+        <span class="modal-title">🧩 저장된 견적으로 기본 견적서 만들기</span>
+        <button class="modal-close" onclick="closeExtract()">✕</button>
+      </div>
+      <div id="extract-body" class="saved-list"></div>
+    </div>
+  </div>
+
+  <!-- ① 상세 견적서 -->
+  <div class="quote-doc" id="quote-detail">
+    <div class="qdoc-label-tag">상세 견적서</div>
+    <div class="qdoc-header">
+      <div class="qdoc-logo">라인 인테리어</div>
+      <div class="qdoc-title">견 적 서</div>
+    </div>
+    <table class="qinfo-table">
+      <tr><td class="qinfo-label">의뢰일</td><td id="qi-date" class="qinfo-val"></td><td class="qinfo-label">상호</td><td class="qinfo-val">라인 인테리어</td></tr>
+      <tr><td class="qinfo-label">고객명 / 연락처</td><td id="qi-client" class="qinfo-val"></td><td class="qinfo-label">등록번호</td><td class="qinfo-val">296-24-02323</td></tr>
+      <tr><td class="qinfo-label">주소 / 평형</td><td id="qi-addr" class="qinfo-val"></td><td class="qinfo-label">담당자</td><td class="qinfo-val">라인 인테리어</td></tr>
+      <tr><td class="qinfo-label">시공 예상기간</td><td id="qi-period" class="qinfo-val"></td><td class="qinfo-label">연락처</td><td class="qinfo-val">010-6420-3155</td></tr>
+      <tr><td class="qinfo-label">특이사항</td><td id="qi-note" class="qinfo-val" colspan="3"></td></tr>
+    </table>
+    <table class="qitem-table">
+      <thead><tr><th class="col-cat">품명</th><th class="col-name">내용</th><th class="col-unit">단위</th><th class="col-qty">수량</th><th class="col-price">단가</th><th class="col-amount">견적가</th></tr></thead>
+      <tbody id="qitem-body-detail"></tbody>
+      <tfoot>
+        <tr class="qfoot-sub"><td colspan="5" class="qfoot-label">소 계 (부가세 제외)</td><td class="qfoot-val" id="qf-sub-d"></td></tr>
+        <tr class="qfoot-vat"><td colspan="5" class="qfoot-label">부가세 (10%)</td><td class="qfoot-val" id="qf-vat-d"></td></tr>
+        <tr class="qfoot-total"><td colspan="5" class="qfoot-label">총 공사 금액</td><td class="qfoot-val" id="qf-total-d"></td></tr>
+      </tfoot>
+    </table>
+    <table class="qcontract-table">
+      <tr>
+        <td class="qc-label qc-label-deposit">계약금 (10%)</td><td class="qc-val" id="qc-deposit-d"></td>
+        <td class="qc-label qc-label-mid">중도금 (40%)</td><td class="qc-val" id="qc-mid-d"></td>
+        <td class="qc-label qc-label-final">잔금 (50%)</td><td class="qc-val" id="qc-final-d"></td>
+      </tr>
+    </table>
+    <div class="qdoc-footer">
+      <p>본 업체는 전문 기공 인력만 시공합니다. (연습생, 외국인 인력 제한)</p>
+      <p>부가세 별도 견적입니다. (<span id="pay-note-d">계약금 10%, 중도금 40%, 잔금 50%</span> 기준)</p>
+      <div class="qdoc-sign"><span>상기와 같이 계약합니다.</span><span class="sign-line">계약자 서명 : _______________</span></div>
+    </div>
+  </div>
+
+  <!-- ② 요약 견적서 -->
+  <div class="quote-doc" id="quote-simple">
+    <div class="qdoc-label-tag qdoc-label-simple">요약 견적서</div>
+    <div class="qdoc-header">
+      <div class="qdoc-logo">라인 인테리어</div>
+      <div class="qdoc-title">견 적 서</div>
+    </div>
+    <table class="qinfo-table">
+      <tr><td class="qinfo-label">의뢰일</td><td id="qi-date2" class="qinfo-val"></td><td class="qinfo-label">상호</td><td class="qinfo-val">라인 인테리어</td></tr>
+      <tr><td class="qinfo-label">고객명 / 연락처</td><td id="qi-client2" class="qinfo-val"></td><td class="qinfo-label">등록번호</td><td class="qinfo-val">296-24-02323</td></tr>
+      <tr><td class="qinfo-label">주소 / 평형</td><td id="qi-addr2" class="qinfo-val"></td><td class="qinfo-label">담당자</td><td class="qinfo-val">라인 인테리어</td></tr>
+    </table>
+    <table class="qitem-table">
+      <thead><tr><th class="col-cat" colspan="2">항목</th><th class="col-unit">단위</th><th class="col-qty">수량</th><th class="col-price"></th><th class="col-amount">견적가</th></tr></thead>
+      <tbody id="qitem-body-simple"></tbody>
+      <tfoot>
+        <tr class="qfoot-sub"><td colspan="5" class="qfoot-label">소 계 (부가세 제외)</td><td class="qfoot-val" id="qf-sub-s"></td></tr>
+        <tr class="qfoot-vat"><td colspan="5" class="qfoot-label">부가세 (10%)</td><td class="qfoot-val" id="qf-vat-s"></td></tr>
+        <tr class="qfoot-total"><td colspan="5" class="qfoot-label">총 공사 금액</td><td class="qfoot-val" id="qf-total-s"></td></tr>
+      </tfoot>
+    </table>
+    <table class="qcontract-table">
+      <tr>
+        <td class="qc-label qc-label-deposit">계약금 (10%)</td><td class="qc-val" id="qc-deposit-s"></td>
+        <td class="qc-label qc-label-mid">중도금 (40%)</td><td class="qc-val" id="qc-mid-s"></td>
+        <td class="qc-label qc-label-final">잔금 (50%)</td><td class="qc-val" id="qc-final-s"></td>
+      </tr>
+    </table>
+    <div class="qdoc-footer">
+      <p>부가세 별도 견적입니다. (<span id="pay-note-s">계약금 10%, 중도금 40%, 잔금 50%</span> 기준)</p>
+      <div class="qdoc-sign"><span>상기와 같이 계약합니다.</span><span class="sign-line">계약자 서명 : _______________</span></div>
+    </div>
+  </div>
+
+</div>
+<script src="data.js"></script>
+<script src="tpl-data.js"></script>
+<script src="app.js"></script>
+<script src="tpl.js"></script>
+<script src="share.js"></script>
+<script src="send.js"></script>
+<script>
+// 요약 견적서 고객정보 동기화
+['clientName','clientPhone','clientAddr','clientDate'].forEach(id => {
+  document.getElementById(id).addEventListener('input', syncSimpleInfo);
+});
+function syncSimpleInfo() {
+  const n = document.getElementById('clientName').value;
+  const p = document.getElementById('clientPhone').value;
+  const a = document.getElementById('clientAddr').value;
+  const d = (document.getElementById('clientDate').value||'').replace(/(\d{4})-(\d{2})-(\d{2})/,'$1년 $2월 $3일');
+  const qi2 = document.getElementById('qi-date2');
+  const qc2 = document.getElementById('qi-client2');
+  const qa2 = document.getElementById('qi-addr2');
+  if(qi2) qi2.textContent = d;
+  if(qc2) qc2.textContent = `${n} / ${p}`;
+  if(qa2) qa2.textContent = a;
+}
+</script>
+<script>
+// 비율 합계 실시간 표시
+['pay-deposit','pay-mid','pay-final'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', () => {
+    const d = parseInt(document.getElementById('pay-deposit')?.value)||0;
+    const m = parseInt(document.getElementById('pay-mid')?.value)||0;
+    const f = parseInt(document.getElementById('pay-final')?.value)||0;
+    const sum = d+m+f;
+    const sumEl = document.getElementById('pay-sum');
+    if(sumEl) { sumEl.textContent = sum; sumEl.style.color = sum===100?'#16a34a':'#dc2626'; }
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>견적서 — 라인 인테리어</title>
+<style>
+  :root {
+    --bg: #f4f3f1; --paper: #ffffff; --tx: #1c1917; --tx2: #57534e; --tx3: #a8a29e;
+    --bd: #e7e5e4; --bd2: #d6d3d1; --accent: #2563eb; --accent-lt: #eff6ff; --red: #dc2626;
+    --head: #1c1917;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--tx);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Noto Sans KR", sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  .toolbar {
+    position: sticky; top: 0; z-index: 10; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+    padding: 10px 16px; background: rgba(244,243,241,.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--bd);
+  }
+  .toolbar button, .toolbar a {
+    padding: 9px 14px; font-size: 13px; font-weight: 700; border-radius: 10px; border: 1px solid var(--bd2);
+    background: var(--paper); color: var(--tx); cursor: pointer; text-decoration: none; font-family: inherit;
+  }
+  .toolbar .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .toolbar .seg { display: inline-flex; border: 1px solid var(--bd2); border-radius: 10px; overflow: hidden; }
+  .toolbar .seg button { border: none; border-radius: 0; }
+  .toolbar .seg button.on { background: var(--head); color: #fff; }
+
+  .paper {
+    max-width: 820px; margin: 20px auto 40px; background: var(--paper); padding: 36px 40px;
+    border-radius: 14px; box-shadow: 0 4px 18px rgba(0,0,0,.07);
+  }
+  .doc-head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--head); padding-bottom: 12px; }
+  .logo { font-size: 20px; font-weight: 800; color: var(--accent); }
+  .doc-title { font-size: 26px; font-weight: 800; letter-spacing: 10px; margin-right: -10px; }
+  .subtitle { margin: 10px 0 0; font-size: 13px; color: var(--tx2); }
+
+  table { width: 100%; border-collapse: collapse; }
+  .info { margin-top: 16px; font-size: 13px; }
+  .info td { border: 1px solid var(--bd); padding: 8px 10px; vertical-align: top; }
+  .info .k { width: 18%; background: #f8f7f6; font-weight: 700; color: var(--tx2); white-space: nowrap; }
+
+  .items { margin-top: 18px; font-size: 13px; }
+  .items th { background: var(--head); color: #fff; font-weight: 700; padding: 9px 8px; font-size: 12px; }
+  .items td { border-bottom: 1px solid var(--bd); padding: 8px; vertical-align: top; }
+  .items .cat td { background: #f1efed; font-weight: 800; border-bottom: 1px solid var(--bd2); }
+  .items .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .items .ctr { text-align: center; white-space: nowrap; color: var(--tx2); }
+  .items .name { font-weight: 600; }
+  .items .detail { display: block; margin-top: 2px; font-size: 11.5px; color: var(--tx2); font-weight: 400; line-height: 1.45; }
+  .items .incl { color: var(--tx3); font-size: 12px; }
+  .items .minus { color: var(--red); }
+  .summary-only .line { display: none; }
+
+  .totals { margin-top: 16px; font-size: 14px; }
+  .totals td { padding: 9px 10px; border-bottom: 1px solid var(--bd); }
+  .totals td:last-child { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .totals .grand td { background: var(--head); color: #fff; font-size: 17px; font-weight: 800; border: none; }
+  .totals .grand td:last-child { font-size: 20px; }
+
+  .pay { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .pay div { border: 1px solid var(--bd2); border-radius: 10px; padding: 10px 12px; }
+  .pay small { display: block; font-size: 11px; color: var(--tx2); font-weight: 700; }
+  .pay b { font-size: 15px; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+  .foot { margin-top: 20px; font-size: 12px; color: var(--tx2); line-height: 1.7; }
+  .sign { display: flex; justify-content: space-between; margin-top: 24px; font-weight: 700; font-size: 13px; }
+  .msg { max-width: 520px; margin: 80px auto; padding: 28px; background: var(--paper); border-radius: 14px; text-align: center; line-height: 1.7; color: var(--tx2); }
+  .msg b { color: var(--tx); font-size: 17px; }
+
+  @media (max-width: 640px) {
+    .paper { margin: 0; border-radius: 0; padding: 20px 16px 28px; box-shadow: none; }
+    .doc-title { font-size: 20px; letter-spacing: 6px; margin-right: -6px; }
+    .logo { font-size: 16px; }
+    .info, .info tbody { display: block; }
+    .info tr { display: grid; grid-template-columns: 32% 68%; }
+    .info td { margin: -1px 0 0 0; }
+    .info .k { width: auto; }
+    .info td[colspan] { grid-column: auto; }
+    .items .col-u, .items .col-q, .items .col-p { display: none; }
+    .pay { grid-template-columns: 1fr; }
+    .sign { flex-direction: column; gap: 10px; }
+  }
+  @media print {
+    @page { size: A4; margin: 12mm; }
+    body { background: #fff; }
+    .toolbar { display: none; }
+    .paper { margin: 0; padding: 0; box-shadow: none; border-radius: 0; max-width: none; }
+    .items th, .totals .grand td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .items .cat td, .info .k { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    tr { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="toolbar" id="toolbar" hidden>
+  <span class="seg">
+    <button id="btn-detail" class="on" type="button">상세</button>
+    <button id="btn-simple" type="button">요약</button>
+  </span>
+  <button class="primary" type="button" onclick="window.print()">🖨 인쇄 · PDF 저장</button>
+  <a id="btn-call" href="#">📞 전화 문의</a>
+</div>
+<main id="app"><p class="msg">견적서를 불러오는 중…</p></main>
+
+<script src="share.js"></script>
+<script>
+const won = n => Math.round(n || 0).toLocaleString('ko-KR');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const dateKo = d => (d || '').replace(/(\d{4})-(\d{2})-(\d{2})/, '$1년 $2월 $3일');
+
+function render(q) {
+  const co = q.co || COMPANY;
+  document.title = `견적서 — ${co.name}${q.c?.name ? ' · ' + q.c.name : ''}`;
+  const groups = [];
+  q.rows.forEach(([cat, label, detail, qty, u, unitP, amt, incl]) => {
+    let g = groups.find(x => x.cat === cat);
+    if (!g) groups.push(g = { cat, rows: [], sum: 0 });
+    g.rows.push({ label, detail, qty, u, unitP, amt, incl });
+    g.sum += amt;
+  });
+  const itemRows = groups.map(g => `
+    <tr class="cat"><td>${esc(g.cat)}</td><td class="col-u"></td><td class="col-q"></td><td class="col-p"></td><td class="num">${won(g.sum)}</td></tr>
+    ${g.rows.map(r => `<tr class="line">
+      <td class="name">${esc(r.label)}${r.detail ? `<span class="detail">${esc(r.detail)}</span>` : ''}</td>
+      <td class="ctr col-u">${esc(r.u)}</td>
+      <td class="ctr col-q">${r.incl ? '' : esc(r.qty)}</td>
+      <td class="num col-p">${r.incl ? '' : won(r.unitP)}</td>
+      <td class="num ${r.amt < 0 ? 'minus' : ''}">${r.incl ? '<span class="incl">포함</span>' : won(r.amt)}</td>
+    </tr>`).join('')}`).join('');
+  const p = q.pay || { deposit: 10, mid: 40, final: 50 };
+  const part = pct => Math.round(q.total * pct / 100);
+
+  document.getElementById('app').innerHTML = `<article class="paper" id="paper">
+    <div class="doc-head"><div class="logo">${esc(co.name)}</div><div class="doc-title">견적서</div></div>
+    ${q.title ? `<p class="subtitle">${esc(q.title)} 기준</p>` : ''}
+    <table class="info">
+      <tr><td class="k">견적일</td><td>${esc(dateKo(q.c?.date))}</td><td class="k">상호</td><td>${esc(co.name)}</td></tr>
+      <tr><td class="k">고객명</td><td>${esc(q.c?.name)}</td><td class="k">등록번호</td><td>${esc(co.reg)}</td></tr>
+      <tr><td class="k">주소 / 평형</td><td>${esc(q.c?.addr)}</td><td class="k">담당자</td><td>${esc(co.mgr)}</td></tr>
+      <tr><td class="k">시공 예상기간</td><td>${esc(q.c?.period)}</td><td class="k">연락처</td><td>${esc(co.tel)}</td></tr>
+      ${q.c?.note ? `<tr><td class="k">특이사항</td><td colspan="3">${esc(q.c.note)}</td></tr>` : ''}
+    </table>
+    <table class="items" id="items">
+      <thead><tr><th style="text-align:left">품명 / 내용</th><th class="col-u">단위</th><th class="col-q">수량</th><th class="col-p">단가</th><th style="text-align:right">견적가</th></tr></thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+    <table class="totals">
+      <tr><td>소계 (부가세 제외)</td><td>${won(q.sub)}원</td></tr>
+      ${q.nego ? `<tr><td>할인</td><td class="minus" style="color:var(--red)">− ${won(q.nego)}원</td></tr>` : ''}
+      <tr><td>부가세 (10%)</td><td>${won(q.vat)}원</td></tr>
+      <tr class="grand"><td>총 공사 금액</td><td>${won(q.total)}원</td></tr>
+    </table>
+    <div class="pay">
+      <div><small>계약금 (${p.deposit}%)</small><b>${won(part(p.deposit))}원</b></div>
+      <div><small>중도금 (${p.mid}%)</small><b>${won(part(p.mid))}원</b></div>
+      <div><small>잔금 (${p.final}%)</small><b>${won(part(p.final))}원</b></div>
+    </div>
+    <div class="foot">
+      <div>· 본 업체는 전문 기공 인력만 시공합니다. (연습생, 외국인 인력 제한)</div>
+      <div>· 실제 공사 금액은 현장 실측 후 변동될 수 있습니다.</div>
+      <div>· 계약금 ${p.deposit}%, 중도금 ${p.mid}%, 잔금 ${p.final}% 기준</div>
+    </div>
+    <div class="sign"><span>상기와 같이 견적합니다.</span><span>${esc(co.name)}</span></div>
+  </article>`;
+
+  const call = document.getElementById('btn-call');
+  call.href = 'tel:' + String(co.tel).replace(/[^\d+]/g, '');
+  document.getElementById('toolbar').hidden = false;
+  const setMode = simple => {
+    document.getElementById('items').classList.toggle('summary-only', simple);
+    document.getElementById('btn-simple').classList.toggle('on', simple);
+    document.getElementById('btn-detail').classList.toggle('on', !simple);
+  };
+  document.getElementById('btn-detail').onclick = () => setMode(false);
+  document.getElementById('btn-simple').onclick = () => setMode(true);
+}
+
+function fail() {
+  document.getElementById('app').innerHTML =
+    `<div class="msg"><b>견적서를 열 수 없습니다</b><br>링크가 잘렸거나 잘못된 것 같아요.<br>받으신 메시지의 링크 전체를 다시 눌러 주시거나, 업체에 다시 요청해 주세요.<br><br>${esc(COMPANY.name)} ${esc(COMPANY.tel)}</div>`;
+}
+
+(async () => {
+  const m = location.hash.match(/[#&]q=([^&]+)/);
+  if (!m) return fail();
+  try {
+    const q = await unpackQuote(m[1]);
+    if (!q || !Array.isArray(q.rows)) return fail();
+    render(q);
+  } catch (e) {
+    console.warn(e);
+    fail();
+  }
+})();
+</script>
+</body>
+</html>
