@@ -1689,3 +1689,8 @@ tfoot td.xs-int { color: #7a4b00; font-size: 12px; font-weight: 700; }
 .xs-table .c-base { width: 104px; } .xs-table .c-ox { width: 64px; } .xs-table .c-cost { width: 96px; }
 .xs-table .c-memo { width: 210px; } .xs-table .c-note { width: 160px; }
 textarea.xs-memo { display: block; resize: vertical; min-height: 34px; line-height: 1.35; white-space: pre-wrap; }
+/* 다크 모드에서도 자재 목록 글자가 보이도록 (밝은 배경 + 진한 글자 고정) */
+.bd-pk, .bd-pk-row, .bd-pk-n, .bd-pk-n b, .bd-pk-p, .bd-pk-top b { color: #111; }
+.bd-pk-top input { background: #fff; color: #111; }
+.bd-pk-k { color: #1f2937; }
+.bd-pk-row:hover { background: #fff; }
