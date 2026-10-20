@@ -2,10 +2,10 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="app-version" content="202610201527">
+  <meta name="app-version" content="202610201541">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>인테리어 견적 계산기 — 라인 인테리어</title>
-  <link rel="stylesheet" href="style.css?v=202610201527">
+  <link rel="stylesheet" href="style.css?v=202610201541">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
@@ -187,6 +187,17 @@
     </div>
   </div>
 
+  <!-- 내역으로 계산 모달 (breakdown.js) -->
+  <div id="bd-modal" class="modal-overlay hidden">
+    <div class="modal-box modal-furn">
+      <div class="modal-header">
+        <span class="modal-title">🧮 내역으로 계산 (자재 · 인건비)</span>
+        <button class="modal-close" onclick="closeBreakdown()">✕</button>
+      </div>
+      <div id="bd-body" class="saved-list"></div>
+    </div>
+  </div>
+
   <!-- 공통 항목 추출 모달 (tpl.js) -->
   <div id="extract-modal" class="modal-overlay hidden">
     <div class="modal-box modal-wide">
@@ -270,16 +281,17 @@
   </div>
 
 </div>
-<script src="data.js?v=202610201527"></script>
-<script src="tpl-data.js?v=202610201527"></script>
-<script src="app.js?v=202610201527"></script>
-<script src="tpl.js?v=202610201527"></script>
-<script src="furniture.js?v=202610201527"></script>
-<script src="vendor-data.js?v=202610201527"></script>
-<script src="vendor.js?v=202610201527"></script>
-<script src="sheet.js?v=202610201527"></script>
-<script src="share.js?v=202610201527"></script>
-<script src="send.js?v=202610201527"></script>
+<script src="data.js?v=202610201541"></script>
+<script src="tpl-data.js?v=202610201541"></script>
+<script src="app.js?v=202610201541"></script>
+<script src="tpl.js?v=202610201541"></script>
+<script src="furniture.js?v=202610201541"></script>
+<script src="vendor-data.js?v=202610201541"></script>
+<script src="vendor.js?v=202610201541"></script>
+<script src="breakdown.js?v=202610201541"></script>
+<script src="sheet.js?v=202610201541"></script>
+<script src="share.js?v=202610201541"></script>
+<script src="send.js?v=202610201541"></script>
 <script>
 // 요약 견적서 고객정보 동기화
 ['clientName','clientPhone','clientAddr','clientDate'].forEach(id => {

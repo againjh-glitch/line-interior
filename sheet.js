@@ -63,7 +63,7 @@ function renderSheet() {
       ${ii === 0 ? `<td class="xs-proc" rowspan="${b.items.length}">${esc(b.proc)}${b.proc === '가구' && typeof openFurn === 'function'
         ? `<button class="xs-furn-btn" onclick="openFurn()" title="싱크대·붙박이장 사이즈로 예상 견적">🧮 사이즈로<br>계산</button>` : ''}${b.proc === '도배·바닥재' && typeof openVendor === 'function'
         ? `<button class="xs-furn-btn vd" onclick="openVendor('바닥재')" title="업체 바닥재 단가에서 고르기">📒 바닥재<br>고르기</button>` : ''}</td>` : ''}
-      <td class="xs-item">${esc(i.n)}</td>
+      <td class="xs-item">${esc(i.n)}${i.p != null && typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${i.bd ? ' on' : ''}" onclick="openBreakdown('b',${bi},${ii})" title="자재·인건비 내역으로 계산">${i.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
       <td class="xs-desc">${esc(i.d)}</td>
       <td class="xs-num xs-amt"></td>
       ${i.p == null ? '<td></td>' : `<td class="xs-in xs-num">${money(i.p, `xsBaseAmt(${bi},${ii},this.value)`, i.n + ' 기본 금액')}</td>`}
@@ -75,7 +75,7 @@ function renderSheet() {
   // ── Ⅱ. 선택 옵션
   const optRows = tplState.options.map((o, oi) => `<tr class="xs-row${o.on ? '' : ' off'}" data-k="o" data-i="${oi}">
       <td class="xs-proc sm">선택</td>
-      <td class="xs-item">${esc(o.n)}</td>
+      <td class="xs-item">${esc(o.n)}${typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${o.bd ? ' on' : ''}" onclick="openBreakdown('o',-1,${oi})" title="자재·인건비 내역으로 계산">${o.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
       <td class="xs-desc">${esc(o.d)}</td>
       <td class="xs-num xs-amt"></td>
       <td class="xs-in xs-num">${money(o.p, `xsOptAmt(${oi},this.value)`, o.n + ' 참고 금액')}</td>

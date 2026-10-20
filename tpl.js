@@ -64,7 +64,7 @@ function tplPack(t) {
   const bx = {};
   t.blocks.forEach((bl, bi) => {
     const bb = base.blocks[bi];
-    if (!bb || bb.proc !== bl.proc || bb.items.length !== bl.items.length || bb.items.some((x, j) => x.n !== bl.items[j].n)) bx[bi] = bl;
+    if (!bb || bb.proc !== bl.proc || bb.items.length !== bl.items.length || bb.items.some((x, j) => x.n !== bl.items[j].n) || bl.items.some(x => x.bd)) bx[bi] = bl;
   });
   return {
     key: t.key, packed: 1, feeRate: t.feeRate,
@@ -72,7 +72,7 @@ function tplPack(t) {
     o: t.options.map(o => [o.on ? 1 : 0, o.p]),
     bx, nb: t.blocks.length, fu: t.furn || null,
     // 업체 단가표 등으로 옵션이 늘어난 경우 옵션 전체를 담음
-    ox: (t.options.length !== base.options.length || t.options.some((o, i) => o.n !== base.options[i].n)) ? t.options : null,
+    ox: (t.options.length !== base.options.length || t.options.some((o, i) => o.n !== base.options[i].n || o.bd)) ? t.options : null,
   };
 }
 function tplUnpack(t) {

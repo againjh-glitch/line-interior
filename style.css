@@ -1622,3 +1622,23 @@ body.sheet-mode .quote-actions { margin-top: 14px; }
   .vd-top, .vd-list, .vd-pick { padding-left: 10px; padding-right: 10px; }
   .vd-result .tpl-tool { margin-left: 0; width: 100%; }
 }
+
+/* ── 내역으로 계산 (breakdown.js) ── */
+.xs-bd-btn { margin-left: 6px; padding: 1px 5px; font-size: 11px; line-height: 1.4; border: 1px solid #c9ced6; border-radius: 4px; background: #fff; cursor: pointer; vertical-align: 1px; }
+.xs-bd-btn:hover { border-color: #0f766e; }
+.xs-bd-btn.on { background: #0f766e; border-color: #0f766e; color: #fff; font-weight: 700; }
+.bd-table .bd-c-k { width: 84px; } .bd-table .bd-c-u { width: 56px; } .bd-table .bd-c-p { width: 104px; }
+.bd-table .bd-c-q { width: 92px; } .bd-table .bd-c-c { width: 110px; } .bd-table .bd-c-del { width: 34px; }
+.bd-memo { padding: 0 7px 4px; font-size: 10.5px; color: #6b7280; }
+.bd-per { display: flex; align-items: center; gap: 3px; padding: 0 6px 4px; font-size: 10px; color: #6b7280; font-weight: 600; }
+.bd-per input { width: auto !important; min-height: 0 !important; }
+.bd-table .xs-addcell { display: table-cell; }
+.bd-table .xs-addcell .xs-add { width: auto; padding: 7px 12px; }
+.bd-count { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 10px; font-size: 12px; color: var(--tx2); }
+.bd-count label { display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--tx); }
+.bd-count input { width: 70px; padding: 5px 7px; text-align: right; font-weight: 700; color: #0000ff; background: #fff2cc; border: 1px solid #c9ced6; border-radius: 4px; }
+.bd-desc { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 11.5px; font-weight: 700; color: var(--tx2); }
+.bd-desc input { padding: 7px 9px; font-size: 13px; border: 1px solid #c9ced6; border-radius: 4px; background: #fff2cc; color: #111; }
+.bd-warn { margin: 0 0 10px; padding: 8px 10px; font-size: 12px; color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; }
+#bd-by { white-space: normal !important; font-size: 11px; line-height: 1.5; }
+.bd-table tfoot .xs-addcell { background: #fafafa; }
