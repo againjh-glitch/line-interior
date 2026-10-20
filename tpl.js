@@ -83,6 +83,7 @@ function tplUnpack(t) {
 function showMode(m) {
   isTplMode = m === 'tpl';
   isYanguMode = m === 'yangu';
+  document.body.classList.toggle('sheet-mode', m === 'tpl' && typeof renderSheet === 'function');
   document.getElementById('normal-mode').classList.toggle('hidden', m !== 'normal');
   document.getElementById('yangu-mode').classList.toggle('hidden', m !== 'yangu');
   document.getElementById('tpl-mode').classList.toggle('hidden', m !== 'tpl');
@@ -130,6 +131,7 @@ function tplCollectRows() {
 
 /* ════════ 기본 견적서 화면 ════════ */
 function renderTpl() {
+  if (typeof renderSheet === 'function') { renderSheet(); return; } // 엑셀 모양 화면 (sheet.js)
   const el = document.getElementById('tpl-content');
   if (!el) return;
   const users = getUserTemplates();
@@ -272,6 +274,7 @@ function renderSpecials() {
   const total = specials.reduce((s, x) => s + spLineAmt(x), 0);
 
   let rows = specials.map((s, i) => {
+    if (s.pre && !(Number(s.q) > 0)) return ''; // 엑셀 화면에서 미리 넣어 둔 빈 줄은 숨김
     const libItem = findSp(s.n);
     const pickVal = !s.n ? '' : libItem ? s.n : '__custom';
     const canSave = s.n && !libItem;
@@ -389,7 +392,7 @@ function openExtract() {
     box.innerHTML = `<p class="ex-msg">같은 아파트 견적을 여러 개 고르세요. 고른 견적 중 기준 비율 이상에 들어간 항목이 기본 공사가 되고, 그보다 적게 들어간 항목은 선택 옵션이 됩니다. 금액은 중간값입니다.</p>
       <div class="ex-list">${list.map(({ key, snap }) => `<label class="ex-item">
         <input type="checkbox" value="${esc(key)}">
-        <span><b>${esc(snap.label || '견적')}</b><br><small>📋 ${esc(snap.tpl.name)} · 특이사항 ${(snap.specials || []).length}건</small></span></label>`).join('')}</div>
+        <span><b>${esc(snap.label || '견적')}</b><br><small>📋 ${esc(snap.tpl.name)} · 특이사항 ${(snap.specials || []).filter(x => x.n && Number(x.q) > 0).length}건</small></span></label>`).join('')}</div>
       <div class="ex-ctrl">
         <label>기본 공사 기준 <select id="ex-th">
           <option value="0.5" selected>절반 이상</option><option value="0.6">60% 이상</option>
@@ -428,7 +431,7 @@ function extractCommon(snaps, th) {
       st.cnt++; st.amts.push(o.p);
     });
     (s.specials || []).forEach(x => {
-      if (!x.n) return;
+      if (!x.n || !(Number(x.q) > 0)) return;
       const st = sp[x.n] || (sp[x.n] = { n: x.n, cnt: 0, amts: [] });
       st.cnt++; st.amts.push(spLineAmt(x));
     });

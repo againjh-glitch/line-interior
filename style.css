@@ -1430,3 +1430,114 @@ h1 { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -.4px; marg
 .send-warn { margin: 0 0 8px; padding: 9px 12px; font-size: 13px; font-weight: 700; color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; border-radius: var(--r-md); }
 .send-switch { display: block; width: 100%; margin-top: 10px; padding: 8px; font-size: 12px; font-weight: 700; color: var(--tx2); background: none; border: 1px dashed var(--bd2); border-radius: var(--r-md); cursor: pointer; }
 .send-switch:hover { color: var(--tx); border-color: var(--tx3); }
+
+/* ════════════════════════════════════════════════
+   엑셀 모양 작업 화면 (sheet.js) — 아파트별 기본 견적서
+════════════════════════════════════════════════ */
+body.sheet-mode { background: #f3f4f6; }
+body.sheet-mode .wrap { max-width: 1180px; }
+body.sheet-mode .top-section,
+body.sheet-mode #sp-panel,
+body.sheet-mode .summary,
+body.sheet-mode .pay-ratio-box-outer,
+body.sheet-mode .tpl-mode-header { display: none !important; }
+@media screen { body.sheet-mode .quote-doc { display: none; } }
+body.sheet-mode #tpl-content { background: none; border: none; box-shadow: none; padding: 0; border-radius: 0; }
+body.sheet-mode .quote-actions { margin-top: 14px; }
+
+.xs-tabs {
+  display: flex; gap: 2px; overflow-x: auto; padding: 14px 0 0; border-bottom: 2px solid #1f3864;
+  scrollbar-width: thin;
+}
+.xs-tab {
+  flex-shrink: 0; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  border: 1px solid #c9ced6; border-bottom: none; border-radius: 6px 6px 0 0; background: #e5e7eb; color: #374151;
+}
+.xs-tab:hover { background: #eef2ff; }
+.xs-tab.on { background: #1f3864; border-color: #1f3864; color: #fff; }
+.xs-tab-del { margin-left: 4px; font-size: 11px; opacity: .7; }
+.xs-tab-del:hover { opacity: 1; color: #fca5a5; }
+.xs-tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+.xs-tools button {
+  padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1px solid #c9ced6; border-radius: 4px; background: #fff; color: #374151;
+}
+.xs-tools button:hover { border-color: #1f3864; color: #1f3864; }
+
+.xs-wrap { overflow-x: auto; background: #fff; border: 1px solid #d1d5db; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.xs-sheet {
+  min-width: 960px; padding: 20px 22px 26px; color: #111;
+  font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.xs-company { font-size: 12px; font-weight: 700; }
+.xs-title { margin: 4px 0 2px; font-size: 20px; font-weight: 800; }
+.xs-basis { font-size: 11.5px; color: #595959; margin-bottom: 14px; }
+.xs-sec { margin: 22px 0 6px; font-size: 14px; font-weight: 800; }
+.xs-sec span { font-weight: 600; color: #374151; font-size: 13px; }
+.xs-hint { margin: -2px 0 6px; font-size: 11.5px; color: #595959; }
+
+.xs-sheet table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.xs-sheet th, .xs-sheet td { border: 1px solid #bfbfbf; padding: 5px 7px; vertical-align: middle; line-height: 1.4; }
+.xs-table thead th { background: #1f3864; color: #fff; font-size: 12px; font-weight: 700; text-align: center; }
+.xs-table .c-proc { width: 92px; } .xs-table .c-item { width: 130px; } .xs-table .c-amt { width: 112px; }
+.xs-table .c-base { width: 118px; } .xs-table .c-ox { width: 74px; } .xs-table .c-note { width: 230px; }
+.xs-table .c-kind { width: 74px; } .xs-table .c-spname { width: 190px; } .xs-table .c-qty { width: 70px; }
+.xs-table .c-unit { width: 60px; } .xs-table .c-del { width: 34px; }
+
+.xs-proc { background: #f2f2f2; font-weight: 700; text-align: center; }
+.xs-proc.sm { font-weight: 600; }
+.xs-desc { white-space: normal; }
+.xs-note { font-size: 11.5px; color: #374151; }
+.xs-num { text-align: right; white-space: nowrap; }
+.xs-amt { font-weight: 600; }
+.xs-incl { color: #808080; font-size: 11.5px; font-weight: 400; }
+.xs-sheet td.xs-in { padding: 0; background: #fff2cc; }
+.xs-in input, .xs-in select {
+  width: 100%; height: 100%; min-height: 30px; box-sizing: border-box; padding: 5px 7px;
+  border: none; background: transparent; font: inherit; color: #111;
+}
+.xs-in input:focus, .xs-in select:focus { outline: 2px solid #1f3864; outline-offset: -2px; background: #fff; }
+.xs-money { text-align: right; color: #0000ff !important; font-weight: 600; }
+.xs-oxcell select, .xs-kindcell select { text-align: center; text-align-last: center; font-weight: 700; cursor: pointer; }
+.xs-qtycell input { text-align: center; font-weight: 700; }
+.xs-unitcell input { text-align: center; }
+.xs-ratecell input { width: 46px; display: inline-block; text-align: right; color: #0000ff; font-weight: 600; }
+.xs-ratecell small { color: #595959; }
+.xs-pct input { width: 54px; display: inline-block; text-align: right; color: #0000ff; font-weight: 600; }
+.xs-delcell { text-align: center; padding: 0 !important; }
+.xs-del { border: none; background: none; color: #9ca3af; cursor: pointer; font-size: 12px; padding: 6px; }
+.xs-del:hover { color: #dc2626; }
+
+/* 적용 X → 회색 취소선 (엑셀 조건부 서식과 같은 표시) */
+.xs-row.x td:not(.xs-proc), .xs-row.x td:not(.xs-proc) input { color: #a6a6a6 !important; text-decoration: line-through; }
+.xs-row.x td:not(.xs-proc):not(.xs-in) { background: #f2f2f2; }
+.xs-row.x .xs-oxcell select { text-decoration: none; color: #dc2626 !important; }
+.xs-row.off td:not(.xs-in):not(.xs-proc) { color: #808080; }
+.xs-row.idle td:not(.xs-in) { color: #9ca3af; }
+.xs-row.minus .xs-amt { color: #dc2626; }
+
+.xs-sub td, .xs-sub th { background: #e2efda; font-weight: 800; }
+.xs-addcell { padding: 0 !important; }
+.xs-add { width: 100%; padding: 7px; border: none; background: #fafafa; color: #1f3864; font-weight: 700; cursor: pointer; font-size: 12.5px; }
+.xs-add:hover { background: #eef2ff; }
+
+.xs-totals { margin-top: 22px; width: 620px !important; }
+.xs-totals th { text-align: left; font-weight: 600; background: #f2f2f2; }
+.xs-totals td:nth-child(2) { width: 150px; }
+.xs-totals td:nth-child(3) { width: 120px; border: none; font-size: 12px; }
+.xs-totals .xs-sub th, .xs-totals .xs-sub td:nth-child(2) { background: #e2efda; font-weight: 800; }
+.xs-pay { margin-top: 12px; width: 420px !important; }
+.xs-pay th { background: #f2f2f2; text-align: left; width: 120px; }
+.xs-pay td:nth-child(2) { width: 110px; }
+.xs-warn { margin: 6px 0 0; color: #dc2626; font-size: 12px; font-weight: 600; }
+.xs-warn:empty { display: none; }
+.xs-foot { margin-top: 16px; font-size: 11.5px; color: #595959; line-height: 1.7; }
+
+.xs-info { width: 620px !important; }
+.xs-info th { width: 150px; background: #d9e1f2; text-align: left; font-weight: 700; }
+
+@media (max-width: 700px) {
+  body.sheet-mode .wrap { padding: 0 8px 6rem; }
+  .xs-tab { padding: 7px 12px; font-size: 12px; }
+}
+@media print { body.sheet-mode #tpl-mode { display: none !important; } }
