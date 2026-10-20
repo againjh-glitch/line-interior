@@ -1341,6 +1341,8 @@ function renderQuoteDoc(totals) {
   });
 
   // ── 상세 견적서 tbody ──
+  // 기본 견적서 모드: 고객에게는 공정별 총 견적가만 (줄 금액·단가·수량은 비움)
+  const hideLine = isTplMode;
   let detailHtml = '';
   Object.entries(grouped).forEach(([cat, list]) => {
     const catTotal = list.reduce((s,r)=>s+r.amt,0);
@@ -1348,17 +1350,17 @@ function renderQuoteDoc(totals) {
       <td>${cat}</td><td colspan="4"></td>
       <td class="q-amount">${fmt(catTotal)}</td></tr>`;
     list.forEach((r, ri) => {
-      const up = r.incl ? '' : (r.unitP ? fmt(r.unitP) : '-');
+      const up = hideLine || r.incl ? '' : (r.unitP ? fmt(r.unitP) : '-');
       // 도배 카테고리 첫 항목에 도배지명 표시
       const wallNote = (cat === '도배' && ri === 0 && wallPaperName)
         ? `<br><span class="q-detail" style="color:#2563eb;font-weight:600">📋 도배지: ${wallPaperName}</span>` : '';
       detailHtml += `<tr>
         <td></td>
         <td class="q-name">${r.label}${r.detail?`<br><span class="q-detail">${r.detail}</span>`:''}${wallNote}</td>
-        <td class="q-center">${r.u}</td>
-        <td class="q-center">${r.qty}</td>
+        <td class="q-center">${hideLine ? '' : r.u}</td>
+        <td class="q-center">${hideLine ? '' : r.qty}</td>
         <td class="q-price">${up}</td>
-        <td class="q-amount">${r.incl ? '<span class="q-detail">포함</span>' : fmt(r.amt)}</td></tr>`;
+        <td class="q-amount">${hideLine ? '' : r.incl ? '<span class="q-detail">포함</span>' : fmt(r.amt)}</td></tr>`;
     });
   });
   if (!detailHtml) detailHtml = `<tr><td colspan="6" class="empty">선택된 항목이 없습니다.</td></tr>`;
@@ -1524,11 +1526,12 @@ async function downloadExcel() {
 (${item.detail})` : '');
           C(r,2).font  = { name:'맑은 고딕', size:9, color:{argb:'FF27272A'} };
           C(r,2).alignment = { ...alignLC, wrapText:true };
-          C(r,3).value = item.u; C(r,3).alignment = alignCC; C(r,3).font = fontNm;
-          C(r,4).value = item.qty; C(r,4).alignment = alignCC; C(r,4).font = fontNm;
-          C(r,5).value = item.incl ? '' : (item.unitP||0); C(r,5).numFmt = numFmt; C(r,5).alignment = alignRC;
+          const hideLine = isTplMode; // 기본 견적서 모드: 공정별 총 견적가만
+          C(r,3).value = hideLine ? '' : item.u; C(r,3).alignment = alignCC; C(r,3).font = fontNm;
+          C(r,4).value = hideLine ? '' : item.qty; C(r,4).alignment = alignCC; C(r,4).font = fontNm;
+          C(r,5).value = hideLine || item.incl ? '' : (item.unitP||0); C(r,5).numFmt = numFmt; C(r,5).alignment = alignRC;
           C(r,5).font = { name:'맑은 고딕', size:9, color:{argb:'FF78716C'} };
-          C(r,6).value = item.incl ? '포함' : item.amt; C(r,6).numFmt = numFmt; C(r,6).alignment = alignRC;
+          C(r,6).value = hideLine ? '' : item.incl ? '포함' : item.amt; C(r,6).numFmt = numFmt; C(r,6).alignment = alignRC;
           C(r,6).font = item.amt < 0
             ? { name:'맑은 고딕', size:9, bold:true, color:{argb:'FFDC2626'} }
             : { name:'맑은 고딕', size:9, bold:true, color:{argb:'FF1C1917'} };

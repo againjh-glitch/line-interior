@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="202610201541">
+<meta name="app-version" content="202610201547">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>견적서 — 라인 인테리어</title>
@@ -120,7 +120,7 @@
 </div>
 <main id="app"><p class="msg">견적서를 불러오는 중…</p></main>
 
-<script src="share.js?v=202610201541"></script>
+<script src="share.js?v=202610201547"></script>
 <script>
 const won = n => Math.round(n || 0).toLocaleString('ko-KR');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -138,6 +138,7 @@ function render(q) {
   const internal = q.k === 'g';   // 일반 공유(내부 확인용)
   document.title = `${internal ? '[내부] ' : ''}견적서 — ${co.name}${q.c?.name ? ' · ' + q.c.name : ''}`;
   const groups = [];
+  const lineAmounts = internal || !q.cats; // 고객용(새 링크)은 공정 합계만
   normRows(q).forEach(r => {
     let g = groups.find(x => x.cat === r.cat);
     if (!g) groups.push(g = { cat: r.cat, rows: [], sum: 0, range: '' });
@@ -149,11 +150,11 @@ function render(q) {
     ? `<td class="meta col-meta">${a}</td><td class="meta col-meta" style="text-align:center">${b}</td><td class="meta col-meta">${c}</td>` : '';
   const itemRows = groups.map(g => `
     <tr class="cat"><td>${esc(g.cat)}${internal && g.range ? `<span class="meta-inline">기존 ${esc(g.range)}</span>` : ''}</td>
-      <td class="num">${won(g.sum)}</td>${metaCols(g.range ? '기존 ' + esc(g.range) : '', '', '')}</tr>
+      <td class="num">${won(q.cats && !internal ? q.cats[g.cat] : g.sum)}</td>${metaCols(g.range ? '기존 ' + esc(g.range) : '', '', '')}</tr>
     ${g.rows.map(r => `<tr class="line">
       <td class="name">${esc(r.label)}${r.detail ? `<span class="detail">${esc(r.detail)}</span>` : ''}
         ${internal && (r.f || r.note) ? `<span class="meta-inline">${[r.f && '포함 ' + esc(r.f), esc(r.note)].filter(Boolean).join(' · ')}</span>` : ''}</td>
-      <td class="num ${r.amt < 0 ? 'minus' : ''}">${r.incl ? '<span class="incl">포함</span>' : won(r.amt)}</td>
+      <td class="num ${r.amt < 0 ? 'minus' : ''}">${!lineAmounts ? '' : r.incl ? '<span class="incl">포함</span>' : won(r.amt)}</td>
       ${metaCols('', esc(r.f), esc(r.note))}
     </tr>`).join('')}`).join('');
   const p = q.pay || { deposit: 10, mid: 40, final: 50 };
@@ -171,7 +172,7 @@ function render(q) {
       ${q.c?.note ? `<tr><td class="k">특이사항</td><td colspan="3">${esc(q.c.note)}</td></tr>` : ''}
     </table>
     <table class="items" id="items">
-      <thead><tr><th style="text-align:left">품명 / 내용</th><th style="text-align:right">견적가</th>${internal
+      <thead><tr><th style="text-align:left">품명 / 내용</th><th style="text-align:right">${lineAmounts ? '견적가' : '공정별 견적가'}</th>${internal
         ? '<th class="col-meta">기존 견적 범위</th><th class="col-meta">포함 빈도</th><th class="col-meta" style="text-align:left">비고</th>' : ''}</tr></thead>
       <tbody>${itemRows}</tbody>
     </table>

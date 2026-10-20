@@ -33,9 +33,11 @@ function buildShareQuote(kind) {
     c: { name: v('clientName'), addr: v('clientAddr'), period: v('clientPeriod'), date: v('clientDate'), note: v('clientNote') },
     title: isTplMode && tplState ? tplState.name : '',
     rows: t.rows.map(r => {
-      const base = [r.catName, r.label, r.detail || '', r.amt || 0, r.incl ? 1 : 0];
+      // 고객용은 줄 금액을 담지 않음 (공정 합계 cats만)
+      const base = [r.catName, r.label, r.detail || '', internal ? (r.amt || 0) : 0, r.incl ? 1 : 0];
       return internal ? [...base, r.range || '', r.f || '', r.note || ''] : base;
     }),
+    cats: internal ? null : t.rows.reduce((m, r) => { m[r.catName] = (m[r.catName] || 0) + (r.amt || 0); return m; }, {}),
     sub: t.sub, nego: t.nego || 0, subN: t.subAfterNego, vat: t.vatAfterNego, total: t.totalAfterNego,
     pay: { ...payRatio },
     at: Date.now(),

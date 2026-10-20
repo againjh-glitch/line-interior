@@ -66,6 +66,7 @@ function renderSheet() {
       <td class="xs-item">${esc(i.n)}${i.p != null && typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${i.bd ? ' on' : ''}" onclick="openBreakdown('b',${bi},${ii})" title="자재·인건비 내역으로 계산">${i.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
       <td class="xs-desc">${esc(i.d)}</td>
       <td class="xs-num xs-amt"></td>
+      ${ii === 0 ? `<td class="xs-num xs-tot" rowspan="${b.items.length}" id="xs-tot-${bi}"></td>` : ''}
       ${i.p == null ? '<td></td>' : `<td class="xs-in xs-num">${money(i.p, `xsBaseAmt(${bi},${ii},this.value)`, i.n + ' 기본 금액')}</td>`}
       <td class="xs-in xs-oxcell">${ox(i.on, `xsBaseOX(${bi},${ii},this.value)`)}</td>
       <td class="xs-note">${esc(parts.join(' · '))}</td>
@@ -114,10 +115,10 @@ function renderSheet() {
 
     <h3 class="xs-sec">Ⅰ. 기본 공사 <span>— 안 하는 항목은 적용 칸을 X로 바꾸면 빠집니다</span></h3>
     <table class="xs-table">
-      <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-amt"><col class="c-base"><col class="c-ox"><col class="c-note"></colgroup>
-      <thead><tr><th>품명</th><th>항목</th><th>내용 (기본 규격·수량)</th><th>견적가</th><th>기본 금액</th><th>적용(O/X)</th><th>기존 견적 범위 · 포함 빈도 · 비고</th></tr></thead>
+      <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-amt"><col class="c-tot"><col class="c-base"><col class="c-ox"><col class="c-note"></colgroup>
+      <thead><tr><th>품명</th><th>항목</th><th>내용 (기본 규격·수량)</th><th>상세 견적가</th><th>총 견적가<br><small>(고객에게 보임)</small></th><th>기본 금액</th><th>적용(O/X)</th><th>기존 견적 범위 · 포함 빈도 · 비고</th></tr></thead>
       <tbody>${baseRows}</tbody>
-      <tfoot><tr class="xs-sub"><td colspan="3">A. 기본 공사 소계</td><td class="xs-num" id="xs-A"></td><td colspan="3"></td></tr></tfoot>
+      <tfoot><tr class="xs-sub"><td colspan="4">A. 기본 공사 소계</td><td class="xs-num" id="xs-A"></td><td colspan="3"></td></tr></tfoot>
     </table>
 
     <h3 class="xs-sec">Ⅱ. 선택 옵션 <span>— 적용 칸에 O를 넣으면 견적가에 들어갑니다</span></h3>
@@ -177,10 +178,16 @@ function xsFill() {
     const k = tr.dataset.k, i = +tr.dataset.i;
     const cell = tr.querySelector('.xs-amt');
     if (k === 'b') {
-      const it = tplState.blocks[+tr.dataset.b].items[i];
+      const blk = tplState.blocks[+tr.dataset.b];
+      const it = blk.items[i];
       tr.classList.toggle('x', !it.on);
+      // 상세 견적가: 줄마다 따로 금액이 있을 때만. 공정 통비용(아래 「포함」 줄이 딸린 맨 윗줄)은 총 견적가로만 보여줌
       if (it.p == null) cell.innerHTML = '<span class="xs-incl">포함</span>';
-      else { const a = it.on ? it.p : 0; A += a; cell.textContent = fmt(a); }
+      else {
+        const a = it.on ? it.p : 0; A += a;
+        if (xsIsBlockHead(blk, i)) cell.innerHTML = '<span class="xs-incl">공정 통비용 →</span>';
+        else cell.textContent = fmt(a);
+      }
     } else if (k === 'o') {
       const o = tplState.options[i];
       tr.classList.toggle('off', !o.on);
@@ -192,6 +199,11 @@ function xsFill() {
       tr.classList.toggle('minus', s.kind === '감액');
       cell.textContent = fmt(a);
     }
+  });
+  // 총 견적가 (공정 합계)
+  tplState.blocks.forEach((b, bi) => {
+    const el = document.getElementById('xs-tot-' + bi);
+    if (el) el.textContent = fmt(b.items.reduce((s, x) => s + (x.on && x.p != null ? x.p : 0), 0));
   });
   const t = calcTotals();
   const fee = t.sub - (A + B + C);

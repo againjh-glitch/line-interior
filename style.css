@@ -1480,7 +1480,7 @@ body.sheet-mode .quote-actions { margin-top: 14px; }
 .xs-sheet th, .xs-sheet td { border: 1px solid #bfbfbf; padding: 5px 7px; vertical-align: middle; line-height: 1.4; }
 .xs-table thead th { background: #1f3864; color: #fff; font-size: 12px; font-weight: 700; text-align: center; }
 .xs-table .c-proc { width: 92px; } .xs-table .c-item { width: 130px; } .xs-table .c-amt { width: 112px; }
-.xs-table .c-base { width: 118px; } .xs-table .c-ox { width: 74px; } .xs-table .c-note { width: 230px; }
+.xs-table .c-base { width: 118px; } .xs-table .c-tot { width: 118px; } .xs-table .c-ox { width: 74px; } .xs-table .c-note { width: 230px; }
 .xs-table .c-kind { width: 74px; } .xs-table .c-spname { width: 190px; } .xs-table .c-qty { width: 70px; }
 .xs-table .c-unit { width: 60px; } .xs-table .c-del { width: 34px; }
 
@@ -1642,3 +1642,8 @@ body.sheet-mode .quote-actions { margin-top: 14px; }
 .bd-warn { margin: 0 0 10px; padding: 8px 10px; font-size: 12px; color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; }
 #bd-by { white-space: normal !important; font-size: 11px; line-height: 1.5; }
 .bd-table tfoot .xs-addcell { background: #fafafa; }
+
+/* 총 견적가 (공정 합계) — 고객에게 보이는 금액 */
+.xs-sheet td.xs-tot { background: #e2efda; font-weight: 800; font-size: 13.5px; color: #111; vertical-align: middle; }
+.xs-table thead th small { font-weight: 500; opacity: .8; font-size: 10.5px; }
+.xs-row.x td.xs-tot { text-decoration: none !important; color: #111 !important; background: #e2efda !important; }
