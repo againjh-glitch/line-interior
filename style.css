@@ -1426,3 +1426,7 @@ h1 { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -.4px; marg
 .send-btn.share { background: var(--accent); border-color: var(--accent); color: #fff; }
 .send-btn:hover { filter: brightness(.97); }
 @media (max-width: 700px) { .send-btns { grid-template-columns: 1fr; } }
+.btn-general { background: linear-gradient(135deg, #b45309, #92400e); color: #fff; }
+.send-warn { margin: 0 0 8px; padding: 9px 12px; font-size: 13px; font-weight: 700; color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; border-radius: var(--r-md); }
+.send-switch { display: block; width: 100%; margin-top: 10px; padding: 8px; font-size: 12px; font-weight: 700; color: var(--tx2); background: none; border: 1px dashed var(--bd2); border-radius: var(--r-md); cursor: pointer; }
+.send-switch:hover { color: var(--tx); border-color: var(--tx3); }

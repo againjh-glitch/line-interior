@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-print-simple').addEventListener('click', () => { setPrintMode('simple'); window.print(); });
   document.getElementById('btn-save').addEventListener('click', saveQuote);
   document.getElementById('btn-load').addEventListener('click', () => document.getElementById('load-modal').classList.remove('hidden'));
-  document.getElementById('btn-share').addEventListener('click', shareQuote);
+  document.getElementById('btn-share')?.addEventListener('click', shareQuote); // (예전 작업 화면 공유 — 지금은 send.js 일반 공유 사용)
   document.getElementById('load-modal-close').addEventListener('click', () => document.getElementById('load-modal').classList.add('hidden'));
   loadSavedList();
   ['clientName','clientPhone','clientAddr','clientPeriod','clientNote','clientDate']

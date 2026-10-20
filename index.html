@@ -123,11 +123,11 @@
 
   <!-- 견적서 액션 버튼 -->
   <div class="quote-actions">
-    <div class="quote-actions-label">저장 / 고객에게 보내기</div>
-    <button class="btn-action btn-save"  id="btn-save">💾 저장하고 고객에게 보내기</button>
-    <button class="btn-action btn-send"  id="btn-send">📤 고객용 링크만 만들기</button>
-    <button class="btn-action btn-load"  id="btn-load">📂 불러오기</button>
-    <button class="btn-action btn-share" id="btn-share" title="수정 가능한 계산기 화면 그대로 공유 (직원·가족용)">🔗 작업 화면 공유</button>
+    <div class="quote-actions-label">저장 / 공유</div>
+    <button class="btn-action btn-save"    id="btn-save">💾 저장</button>
+    <button class="btn-action btn-send"    id="btn-send" title="고객용: 내용과 견적가만 보입니다">📤 고객에게 공유</button>
+    <button class="btn-action btn-general" id="btn-general" title="가족·직원용: 기존 견적 범위·포함 빈도·비고까지 보이고 계산기에서 열어 수정할 수 있습니다">🔗 일반 공유</button>
+    <button class="btn-action btn-load"    id="btn-load">📂 불러오기</button>
   </div>
   <div class="quote-actions" style="margin-top:8px">
     <div class="quote-actions-label">견적서 출력</div>
@@ -157,7 +157,7 @@
   <div id="send-modal" class="modal-overlay hidden">
     <div class="modal-box">
       <div class="modal-header">
-        <span class="modal-title">📤 고객에게 견적서 보내기</span>
+        <span class="modal-title" id="send-title">📤 고객에게 공유</span>
         <button class="modal-close" onclick="closeSendModal()">✕</button>
       </div>
       <div id="send-body" class="saved-list"></div>

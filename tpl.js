@@ -113,15 +113,17 @@ function applyTemplate(key) {
 function tplCollectRows() {
   if (!tplState) return [];
   const rows = [];
+  // range·f·note는 내부 참고용 (일반 공유에만 보이고 고객용에는 빠짐)
   tplState.blocks.forEach(b => {
     b.items.forEach(i => {
       if (!i.on) return;
-      if (i.p == null) rows.push({ catName: b.proc, label: i.n, detail: i.d, qty: '', u: '', unitP: 0, amt: 0, incl: true });
-      else rows.push({ catName: b.proc, label: i.n, detail: i.d, qty: 1, u: '식', unitP: i.p, amt: i.p });
+      const meta = { range: b.range || '', f: i.f || '', note: i.note || '' };
+      if (i.p == null) rows.push({ catName: b.proc, label: i.n, detail: i.d, qty: '', u: '', unitP: 0, amt: 0, incl: true, ...meta });
+      else rows.push({ catName: b.proc, label: i.n, detail: i.d, qty: 1, u: '식', unitP: i.p, amt: i.p, ...meta });
     });
   });
   tplState.options.forEach(o => {
-    if (o.on) rows.push({ catName: OPT_CAT, label: o.n, detail: o.d, qty: 1, u: '식', unitP: o.p, amt: o.p });
+    if (o.on) rows.push({ catName: OPT_CAT, label: o.n, detail: o.d, qty: 1, u: '식', unitP: o.p, amt: o.p, f: o.f || '' });
   });
   return rows;
 }
@@ -251,7 +253,9 @@ function specialRows() {
       const sign = s.kind === '감액' ? -1 : 1;
       const unitP = sign * Number(s.p);
       const qty = Number(s.q);
-      return { catName: SP_CAT, label: (s.kind === '감액' ? '[감액] ' : '') + s.n, detail: s.d || '', qty, u: s.u || '식', unitP, amt: unitP * qty };
+      const src = findSp(s.n)?.src;
+      return { catName: SP_CAT, label: (s.kind === '감액' ? '[감액] ' : '') + s.n, detail: s.d || '', qty, u: s.u || '식', unitP, amt: unitP * qty,
+               note: src ? '참고: ' + src : '' };
     });
 }
 function spLineAmt(s) { return (s.kind === '감액' ? -1 : 1) * (Number(s.p) || 0) * (Number(s.q) || 0); }
@@ -540,12 +544,29 @@ function importAll(file) {
   reader.readAsText(file);
 }
 
+// 일반 공유 링크에서 「계산기에서 열어 수정」으로 들어왔을 때
+async function openEditLink(packed) {
+  try {
+    const snap = await unpackQuote(packed);
+    if (snap.tpl) snap.tpl = tplUnpack(snap.tpl);
+    applySnapshot(snap);
+    history.replaceState(null, '', location.pathname);
+    showToast('✏️ 공유받은 견적을 열었습니다. 고친 뒤 💾 저장하세요');
+  } catch (e) {
+    console.warn(e);
+    showMode(START_MODE); calc();
+    showToast('링크가 잘려서 견적을 열지 못했습니다');
+  }
+}
+
 /* ════════ 시작 ════════ */
 document.addEventListener('DOMContentLoaded', () => {
   renderSpecials();
   const ex = document.getElementById('extract-modal');
   ex?.addEventListener('click', e => { if (e.target === ex) closeExtract(); });
   document.getElementById('backup-file')?.addEventListener('change', e => { importAll(e.target.files[0]); e.target.value = ''; });
-  if (new URLSearchParams(location.search).get('q')) loadFromURL(); // 🔗 작업 화면 공유 링크로 열었을 때
+  const w = location.hash.match(/[#&]w=([^&]+)/);
+  if (w) openEditLink(w[1]);                                         // 🔗 일반 공유 → 「계산기에서 열어 수정」
+  else if (new URLSearchParams(location.search).get('q')) loadFromURL(); // 예전 작업 화면 공유 링크
   else if (START_MODE === 'tpl') { showMode('tpl'); calc(); }
 });

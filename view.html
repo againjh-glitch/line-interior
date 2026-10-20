@@ -55,6 +55,16 @@
   .items .incl { color: var(--tx3); font-size: 12px; }
   .items .minus { color: var(--red); }
   .summary-only .line { display: none; }
+  .items .meta { font-size: 11.5px; color: var(--tx2); }
+  .items th.col-meta { white-space: nowrap; }
+  .items td.col-meta { white-space: nowrap; }
+  .items td.col-meta:last-child { white-space: normal; min-width: 120px; }
+  .items .meta-inline { display: none; margin-top: 4px; font-size: 11px; color: #0f766e; font-weight: 600; }
+  .internal-banner {
+    margin: 0 0 14px; padding: 9px 12px; font-size: 13px; font-weight: 700; color: #92400e;
+    background: #fffbeb; border: 1px solid #fcd34d; border-radius: 10px;
+  }
+  .toolbar .edit { background: #0f766e; border-color: #0f766e; color: #fff; }
 
   .totals { margin-top: 16px; font-size: 14px; }
   .totals td { padding: 9px 10px; border-bottom: 1px solid var(--bd); }
@@ -81,7 +91,8 @@
     .info td { margin: -1px 0 0 0; }
     .info .k { width: auto; }
     .info td[colspan] { grid-column: auto; }
-    .items .col-u, .items .col-q, .items .col-p { display: none; }
+    .items .col-meta { display: none; }
+    .items .meta-inline { display: block; }
     .pay { grid-template-columns: 1fr; }
     .sign { flex-direction: column; gap: 10px; }
   }
@@ -91,7 +102,7 @@
     .toolbar { display: none; }
     .paper { margin: 0; padding: 0; box-shadow: none; border-radius: 0; max-width: none; }
     .items th, .totals .grand td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .items .cat td, .info .k { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .items .cat td, .info .k, .internal-banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     tr { page-break-inside: avoid; }
   }
 </style>
@@ -104,6 +115,7 @@
   </span>
   <button class="primary" type="button" onclick="window.print()">🖨 인쇄 · PDF 저장</button>
   <a id="btn-call" href="#">📞 전화 문의</a>
+  <a id="btn-edit" class="edit" href="#" hidden>✏️ 계산기에서 열어 수정</a>
 </div>
 <main id="app"><p class="msg">견적서를 불러오는 중…</p></main>
 
@@ -113,29 +125,41 @@ const won = n => Math.round(n || 0).toLocaleString('ko-KR');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const dateKo = d => (d || '').replace(/(\d{4})-(\d{2})-(\d{2})/, '$1년 $2월 $3일');
 
+// 링크 형식: v1 [cat,label,detail,qty,u,unitP,amt,incl] / v2 [cat,label,detail,amt,incl,range,f,note]
+function normRows(q) {
+  return q.rows.map(r => q.v === 1
+    ? { cat: r[0], label: r[1], detail: r[2], amt: r[6], incl: r[7] }
+    : { cat: r[0], label: r[1], detail: r[2], amt: r[3], incl: r[4], range: r[5] || '', f: r[6] || '', note: r[7] || '' });
+}
+
 function render(q) {
   const co = q.co || COMPANY;
-  document.title = `견적서 — ${co.name}${q.c?.name ? ' · ' + q.c.name : ''}`;
+  const internal = q.k === 'g';   // 일반 공유(내부 확인용)
+  document.title = `${internal ? '[내부] ' : ''}견적서 — ${co.name}${q.c?.name ? ' · ' + q.c.name : ''}`;
   const groups = [];
-  q.rows.forEach(([cat, label, detail, qty, u, unitP, amt, incl]) => {
-    let g = groups.find(x => x.cat === cat);
-    if (!g) groups.push(g = { cat, rows: [], sum: 0 });
-    g.rows.push({ label, detail, qty, u, unitP, amt, incl });
-    g.sum += amt;
+  normRows(q).forEach(r => {
+    let g = groups.find(x => x.cat === r.cat);
+    if (!g) groups.push(g = { cat: r.cat, rows: [], sum: 0, range: '' });
+    g.rows.push(r);
+    g.sum += r.amt;
+    if (!g.range && r.range) g.range = r.range;
   });
+  const metaCols = (a, b, c) => internal
+    ? `<td class="meta col-meta">${a}</td><td class="meta col-meta" style="text-align:center">${b}</td><td class="meta col-meta">${c}</td>` : '';
   const itemRows = groups.map(g => `
-    <tr class="cat"><td>${esc(g.cat)}</td><td class="col-u"></td><td class="col-q"></td><td class="col-p"></td><td class="num">${won(g.sum)}</td></tr>
+    <tr class="cat"><td>${esc(g.cat)}${internal && g.range ? `<span class="meta-inline">기존 ${esc(g.range)}</span>` : ''}</td>
+      <td class="num">${won(g.sum)}</td>${metaCols(g.range ? '기존 ' + esc(g.range) : '', '', '')}</tr>
     ${g.rows.map(r => `<tr class="line">
-      <td class="name">${esc(r.label)}${r.detail ? `<span class="detail">${esc(r.detail)}</span>` : ''}</td>
-      <td class="ctr col-u">${esc(r.u)}</td>
-      <td class="ctr col-q">${r.incl ? '' : esc(r.qty)}</td>
-      <td class="num col-p">${r.incl ? '' : won(r.unitP)}</td>
+      <td class="name">${esc(r.label)}${r.detail ? `<span class="detail">${esc(r.detail)}</span>` : ''}
+        ${internal && (r.f || r.note) ? `<span class="meta-inline">${[r.f && '포함 ' + esc(r.f), esc(r.note)].filter(Boolean).join(' · ')}</span>` : ''}</td>
       <td class="num ${r.amt < 0 ? 'minus' : ''}">${r.incl ? '<span class="incl">포함</span>' : won(r.amt)}</td>
+      ${metaCols('', esc(r.f), esc(r.note))}
     </tr>`).join('')}`).join('');
   const p = q.pay || { deposit: 10, mid: 40, final: 50 };
   const part = pct => Math.round(q.total * pct / 100);
 
   document.getElementById('app').innerHTML = `<article class="paper" id="paper">
+    ${internal ? '<p class="internal-banner">🔒 내부 확인용 견적서 — 기존 견적 범위·포함 빈도·비고가 보입니다. 고객에게 보내지 마세요.</p>' : ''}
     <div class="doc-head"><div class="logo">${esc(co.name)}</div><div class="doc-title">견적서</div></div>
     ${q.title ? `<p class="subtitle">${esc(q.title)} 기준</p>` : ''}
     <table class="info">
@@ -146,7 +170,8 @@ function render(q) {
       ${q.c?.note ? `<tr><td class="k">특이사항</td><td colspan="3">${esc(q.c.note)}</td></tr>` : ''}
     </table>
     <table class="items" id="items">
-      <thead><tr><th style="text-align:left">품명 / 내용</th><th class="col-u">단위</th><th class="col-q">수량</th><th class="col-p">단가</th><th style="text-align:right">견적가</th></tr></thead>
+      <thead><tr><th style="text-align:left">품명 / 내용</th><th style="text-align:right">견적가</th>${internal
+        ? '<th class="col-meta">기존 견적 범위</th><th class="col-meta">포함 빈도</th><th class="col-meta" style="text-align:left">비고</th>' : ''}</tr></thead>
       <tbody>${itemRows}</tbody>
     </table>
     <table class="totals">
@@ -171,6 +196,14 @@ function render(q) {
   const call = document.getElementById('btn-call');
   call.href = 'tel:' + String(co.tel).replace(/[^\d+]/g, '');
   document.getElementById('toolbar').hidden = false;
+  if (internal && q.edit) {
+    const edit = document.getElementById('btn-edit');
+    edit.hidden = false;
+    edit.onclick = async e => {
+      e.preventDefault();
+      location.href = 'index.html#w=' + await packQuote(q.edit);
+    };
+  }
   const setMode = simple => {
     document.getElementById('items').classList.toggle('summary-only', simple);
     document.getElementById('btn-simple').classList.toggle('on', simple);
