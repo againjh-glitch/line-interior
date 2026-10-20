@@ -60,10 +60,17 @@ function tplFromTemplate(t) {
 function tplPack(t) {
   const base = BASE_TEMPLATES.find(b => b.key === t.key);
   if (!base || t.packed) return t;
+  // 가구 계산기 등으로 줄 구성이 바뀐 공정은 통째로 담음
+  const bx = {};
+  t.blocks.forEach((bl, bi) => {
+    const bb = base.blocks[bi];
+    if (!bb || bb.proc !== bl.proc || bb.items.length !== bl.items.length || bb.items.some((x, j) => x.n !== bl.items[j].n)) bx[bi] = bl;
+  });
   return {
     key: t.key, packed: 1, feeRate: t.feeRate,
     b: t.blocks.map(bl => bl.items.map(i => [i.on ? 1 : 0, i.p])),
     o: t.options.map(o => [o.on ? 1 : 0, o.p]),
+    bx, nb: t.blocks.length, fu: t.furn || null,
   };
 }
 function tplUnpack(t) {
@@ -76,6 +83,10 @@ function tplUnpack(t) {
     const v = t.b?.[bi]?.[ii]; if (v) { i.on = !!v[0]; i.p = v[1]; }
   }));
   s.options.forEach((o, oi) => { const v = t.o?.[oi]; if (v) { o.on = !!v[0]; o.p = v[1]; } });
+  if (t.nb) s.blocks.length = t.nb; // 공정이 새로 생기거나 빠진 경우 개수 맞춤
+  Object.entries(t.bx || {}).forEach(([bi, bl]) => { s.blocks[bi] = bl; });
+  s.blocks = s.blocks.filter(Boolean);
+  if (t.fu) s.furn = t.fu;
   return s;
 }
 

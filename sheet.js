@@ -60,7 +60,8 @@ function renderSheet() {
     else if (xsIsBlockHead(b, ii)) parts.push('X면 이 공정 전체가 빠짐');
     if (i.note) parts.push(i.note);
     return `<tr class="xs-row${i.on ? '' : ' x'}" data-k="b" data-b="${bi}" data-i="${ii}">
-      ${ii === 0 ? `<td class="xs-proc" rowspan="${b.items.length}">${esc(b.proc)}</td>` : ''}
+      ${ii === 0 ? `<td class="xs-proc" rowspan="${b.items.length}">${esc(b.proc)}${b.proc === '가구' && typeof openFurn === 'function'
+        ? `<button class="xs-furn-btn" onclick="openFurn()" title="싱크대·붙박이장 사이즈로 예상 견적">🧮 사이즈로<br>계산</button>` : ''}</td>` : ''}
       <td class="xs-item">${esc(i.n)}</td>
       <td class="xs-desc">${esc(i.d)}</td>
       <td class="xs-num xs-amt"></td>
