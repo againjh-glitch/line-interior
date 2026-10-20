@@ -61,7 +61,8 @@ function renderSheet() {
     if (i.note) parts.push(i.note);
     return `<tr class="xs-row${i.on ? '' : ' x'}" data-k="b" data-b="${bi}" data-i="${ii}">
       ${ii === 0 ? `<td class="xs-proc" rowspan="${b.items.length}">${esc(b.proc)}${b.proc === '가구' && typeof openFurn === 'function'
-        ? `<button class="xs-furn-btn" onclick="openFurn()" title="싱크대·붙박이장 사이즈로 예상 견적">🧮 사이즈로<br>계산</button>` : ''}</td>` : ''}
+        ? `<button class="xs-furn-btn" onclick="openFurn()" title="싱크대·붙박이장 사이즈로 예상 견적">🧮 사이즈로<br>계산</button>` : ''}${b.proc === '도배·바닥재' && typeof openVendor === 'function'
+        ? `<button class="xs-furn-btn vd" onclick="openVendor('바닥재')" title="업체 바닥재 단가에서 고르기">📒 바닥재<br>고르기</button>` : ''}</td>` : ''}
       <td class="xs-item">${esc(i.n)}</td>
       <td class="xs-desc">${esc(i.d)}</td>
       <td class="xs-num xs-amt"></td>
@@ -99,6 +100,7 @@ function renderSheet() {
   el.innerHTML = `
   <div class="xs-tabs" role="tablist">${BASE_TEMPLATES.map(tab).join('')}${getUserTemplates().map(tab).join('')}</div>
   <div class="xs-tools">
+    ${typeof openVendor === 'function' ? '<button class="xs-tool-vendor" onclick="openVendor()">📒 업체 단가표</button>' : ''}
     <button onclick="saveAsTemplate()">💾 지금 구성을 템플릿으로 저장</button>
     <button onclick="openExtract()">🧩 저장된 견적으로 기본 견적서 만들기</button>
     <button onclick="exitTplMode()">🧮 일반 견적 계산기로</button>

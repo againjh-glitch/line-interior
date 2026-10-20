@@ -71,6 +71,8 @@ function tplPack(t) {
     b: t.blocks.map(bl => bl.items.map(i => [i.on ? 1 : 0, i.p])),
     o: t.options.map(o => [o.on ? 1 : 0, o.p]),
     bx, nb: t.blocks.length, fu: t.furn || null,
+    // 업체 단가표 등으로 옵션이 늘어난 경우 옵션 전체를 담음
+    ox: (t.options.length !== base.options.length || t.options.some((o, i) => o.n !== base.options[i].n)) ? t.options : null,
   };
 }
 function tplUnpack(t) {
@@ -87,6 +89,7 @@ function tplUnpack(t) {
   Object.entries(t.bx || {}).forEach(([bi, bl]) => { s.blocks[bi] = bl; });
   s.blocks = s.blocks.filter(Boolean);
   if (t.fu) s.furn = t.fu;
+  if (t.ox) s.options = t.ox;
   return s;
 }
 
