@@ -8,9 +8,9 @@
  * 데이터: vendor-data.js (VENDOR_PRICES)
  */
 
-const VENDOR_CATS = ['바닥재', '도배', '문·몰딩', '목공 자재', '부자재', '욕실', '도장', '중문'];
+const VENDOR_CATS = ['바닥재', '철거', '도배', '문·몰딩', '목공 자재', '부자재', '욕실', '도장', '중문'];
 // 넣을 공정 기본값 (시트에 그 공정이 없으면 새로 만듦)
-const VENDOR_TARGET = { '바닥재': '도배·바닥재', '도배': '도배·바닥재', '문·몰딩': '목공', '목공 자재': '목공',
+const VENDOR_TARGET = { '바닥재': '도배·바닥재', '철거': '철거', '도배': '도배·바닥재', '문·몰딩': '목공', '목공 자재': '목공',
   '부자재': '기타', '욕실': '거실 욕실', '도장': '도장', '중문': '목공' };
 // 마진 배율 기본값 — 바닥재는 양우 304호 「동화 나투스 그란데 350만」 ≈ 25평 × 119,000 × 1.18 근거
 const VENDOR_MULT = { '바닥재': 1.2 };
@@ -97,7 +97,7 @@ function renderVendorPick() {
   const target = VENDOR_TARGET[x.cat] || '기타';
   const blocks = [...new Set([...tplState.blocks.map(b => b.proc), target])];
   const hasFloorLine = x.cat === '바닥재' && tplState.blocks.some(b => b.proc === '도배·바닥재' && b.items.some(i => i.n === '바닥재'));
-  const qty = x.u === '평' && x.cat === '바닥재' ? vFloorArea() : 1;
+  const qty = x.u === '평' && (x.cat === '바닥재' || x.cat === '철거') ? vFloorArea() : 1;
   box.innerHTML = `
     <div class="vd-pick-h">＋ <b>${esc(x.n)}</b> <span>${esc(x.vendor)} · 공급가 ${fmt(vNet(x))}/${esc(x.u)}</span></div>
     <div class="vd-form">
@@ -106,7 +106,8 @@ function renderVendorPick() {
       <label>넣을 공정<select id="vd-t" onchange="vendorCalc()">${blocks.map(b => `<option${b === target ? ' selected' : ''}>${esc(b)}</option>`).join('')}<option value="__opt">선택 옵션</option></select></label>
       ${hasFloorLine ? '<label class="vd-chk"><input id="vd-replace" type="checkbox" checked onchange="vendorCalc()"> 기본 「바닥재」 줄을 이 제품으로 바꾸기</label>' : ''}
     </div>
-    ${x.cat === '바닥재' && x.u === '평' ? `<p class="vd-tip">시공 면적은 평형 × 0.75로 넣었어요 (32평형 → 24평, 방·거실 기준). 베란다까지 깔면 늘려주세요.${/우경데코/.test(x.vendor) ? ' 우경데코는 기본 시공비 25만(헤링본 40만)이 따로 있어요.' : ''}</p>` : ''}
+    ${x.min ? `<p class="vd-tip">최소 금액 ${fmt(x.min)}원 — 원가가 이보다 적으면 ${fmt(x.min)}원으로 계산해요.</p>` : ''}
+    ${(x.cat === '바닥재' || x.cat === '철거') && x.u === '평' ? `<p class="vd-tip">시공 면적은 평형 × 0.75로 넣었어요 (32평형 → 24평, 방·거실 기준). 베란다까지 깔면 늘려주세요.${/우경데코/.test(x.vendor) ? ' 우경데코는 기본 시공비 25만(헤링본 40만)이 따로 있어요.' : ''}</p>` : ''}
     <div class="vd-result"><span>업체 원가 <b id="vd-cost"></b></span><span>→ 고객 견적가 <b id="vd-price"></b></span>
       <button class="tpl-tool primary" onclick="vendorInsert()">견적서에 넣기</button></div>`;
   vendorCalc();
@@ -116,7 +117,7 @@ function vendorCalcValues() {
   const x = VENDOR_PRICES[vendorPick];
   const q = Number(document.getElementById('vd-q').value) || 0;
   const m = Math.max(1, Number(document.getElementById('vd-m').value) || 1);
-  const cost = Math.round(vNet(x) * q);
+  const cost = Math.max(x.min && q ? x.min : 0, Math.round(vNet(x) * q)); // 최소 금액 (바닥 철거 최하 20만)
   const price = Math.ceil(cost * m / 10000) * 10000;
   return { x, q, m, cost, price };
 }
