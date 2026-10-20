@@ -1541,3 +1541,4 @@ body.sheet-mode .quote-actions { margin-top: 14px; }
   .xs-tab { padding: 7px 12px; font-size: 12px; }
 }
 @media print { body.sheet-mode #tpl-mode { display: none !important; } }
+.xs-ver { margin-top: 6px; font-size: 10.5px; color: #9ca3af; }

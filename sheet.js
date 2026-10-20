@@ -159,6 +159,7 @@ function renderSheet() {
       <div>* 부가세 별도 견적입니다. 실제 견적은 현장 실측 후 변동될 수 있습니다.</div>
       <div>* 본 업체는 전문 기공 인력만 시공합니다. (연습생, 외국인 인력 제한)</div>
       <div>* 파란 금액은 기존 견적의 중간값입니다. 자재 등급·현장 상황에 맞게 조정하세요. 계약금·중도금·잔금은 견적 금액(부가세 포함) 기준.</div>
+      <div class="xs-ver">화면 버전 ${esc(document.querySelector('meta[name="app-version"]')?.content || '')}</div>
     </div>
   </div></div>`;
   xsFill();
