@@ -402,10 +402,10 @@ async function downloadXlsx() {
   we.getCell('A2').value = '일자:'; we.getCell('B2').value = S.info.date || ''; we.getCell('C2').value = '상호:  ' + (S.info.shop || '');
   we.getCell('F2').value = '전화번호:'; we.mergeCells('G2:H2'); we.getCell('G2').value = S.info.tel || '';
   [['B2'], ['C2'], ['G2']].forEach(([c]) => we.getCell(c).font = pen);
-  we.getCell('A3').value = '주소'; we.mergeCells('B3:D3'); we.getCell('B3').value = S.info.addr || ''; we.getCell('B3').font = pen;
-  ['규격', '수량', '단가', '비고'].forEach((t, k) => { const col = 'EFGH'[k]; we.mergeCells(`${col}3:${col}4`); const c = we.getCell(`${col}3`); c.value = t; c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = pbox; });
-  we.getCell('B4').value = '품명'; we.getCell('C4').value = '장소'; we.getCell('D4').value = '제품명';
-  ['A4', 'B4', 'C4', 'D4'].forEach(c => { we.getCell(c).border = pbox; we.getCell(c).alignment = { horizontal: 'center' }; });
+  we.getCell('A3').value = '주소:'; we.mergeCells('B3:H3'); we.getCell('B3').value = S.info.addr || ''; we.getCell('B3').font = pen;
+  [2, 3].forEach(n => we.getRow(n).height = 22);
+  const hd = we.getRow(4); hd.values = ['No', '품명', '장소', '제품명', '규격', '수량', '단가', '비고']; hd.height = 24;
+  hd.eachCell(c => { c.border = pbox; c.alignment = { horizontal: 'center', vertical: 'middle' }; });
   let r = 5;
   for (let i = 0; i < S.lines.length; ) {
     let j = i; while (j + 1 < S.lines.length && S.lines[j + 1].no === S.lines[i].no) j++;

@@ -316,3 +316,14 @@
   .rq tbody td.rq-no::before { content: none; }
   .pp-row td.pp-place::before { content: '장소'; font-size: 10px; color: #9ca3af; display: block; }
 }
+
+/* 머리 부분: 일자·상호·전화번호 / 주소 — 같은 높이, 표 머리는 한 줄 */
+.pp-paper .pp-head { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 24px; align-items: end; margin-bottom: 8px; }
+.pp-paper .pp-head label { display: flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap; }
+.pp-paper .pp-head label input { flex: 1; min-width: 0; width: auto; height: 30px; }
+.pp-paper .pp-head .pp-tel { justify-self: stretch; }
+.pp-paper .pp-head .pp-addr { grid-column: 1 / -1; border: 0 !important; padding: 0 !important; }
+.pp thead th { height: 34px; padding: 0 4px; vertical-align: middle; }
+@media (max-width: 860px) {
+  .pp-paper .pp-head { grid-template-columns: 1fr; }
+}
