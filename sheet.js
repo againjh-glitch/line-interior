@@ -121,20 +121,20 @@ function renderSheet() {
 
     <h3 class="xs-sec">Ⅰ. 기본 공사 <span>— 안 하는 항목은 적용 칸을 X로 바꾸면 빠집니다</span></h3>
     <p class="xs-hint">🔒 <b>원가·상세내역</b> 칸은 내부용입니다 (고객 공유·견적서 출력에 안 나감). 기존 엑셀 「원가」 열의 중간값을 넣어 두었고, 지난 견적에서 원가가 다른 줄에 몰려 적혀 맞지 않는 공정은 비워 두고 상세내역에 「지난 원가」로 적어 두었어요. 현장마다 고쳐 쓰세요. (상세내역 예: 「2명300+6」, 「목수 6품」, 「2칸 방수 40만」)</p>
-    <table class="xs-table xs-base">
+    <div class="xs-scroll"><table class="xs-table xs-base">
       <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-amt"><col class="c-tot"><col class="c-base"><col class="c-ox"><col class="c-cost"><col class="c-memo"><col class="c-note"></colgroup>
       <thead><tr><th>품명</th><th>항목</th><th>내용 (기본 규격·수량)</th><th>상세 견적가</th><th>총 견적가<br><small>(고객에게 보임)</small></th><th>기본 금액</th><th>적용(O/X)</th><th class="xs-int">원가 🔒</th><th class="xs-int">상세내역 🔒</th><th>기존 견적 범위 · 포함 빈도 · 비고</th></tr></thead>
       <tbody>${baseRows}</tbody>
       <tfoot><tr class="xs-sub"><td colspan="4">A. 기본 공사 소계</td><td class="xs-num" id="xs-A"></td><td colspan="2"></td><td class="xs-num xs-int" id="xs-A-cost"></td><td colspan="2" class="xs-int" id="xs-A-margin"></td></tr></tfoot>
-    </table>
+    </table></div>
 
     <h3 class="xs-sec">Ⅱ. 선택 옵션 <span>— 적용 칸에 O를 넣으면 견적가에 들어갑니다</span></h3>
-    <table class="xs-table">
+    <div class="xs-scroll"><table class="xs-table xs-opt">
       <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-amt"><col class="c-base"><col class="c-ox"><col class="c-cost"><col class="c-memo"><col class="c-note"></colgroup>
       <thead><tr><th>구분</th><th>항목</th><th>내용</th><th>견적가</th><th>참고 금액</th><th>적용(O/X)</th><th class="xs-int">원가 🔒</th><th class="xs-int">상세내역 🔒</th><th>포함 빈도 · 근거</th></tr></thead>
       <tbody>${optRows}</tbody>
       <tfoot><tr class="xs-sub"><td colspan="3">B. 선택 옵션 소계</td><td class="xs-num" id="xs-B"></td><td colspan="2"></td><td class="xs-num xs-int" id="xs-B-cost"></td><td colspan="2" class="xs-int" id="xs-B-margin"></td></tr></tfoot>
-    </table>
+    </table></div>
 
     <h3 class="xs-sec">Ⅲ. 특이사항 (현장 조건) <span>— 해당하는 줄에 수량만 넣으세요</span></h3>
     <p class="xs-hint">자주 나오는 항목은 미리 넣어 두었습니다 (수량 비우면 0원). 다른 항목은 「+ 줄 추가」 후 항목 칸에서 목록을 고르거나 직접 입력하세요. 목록에서 고르면 단가·단위가 자동으로 들어옵니다.</p>

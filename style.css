@@ -1697,3 +1697,7 @@ textarea.xs-memo { display: block; resize: vertical; min-height: 34px; line-heig
 /* 욕실 자재 견적서 링크 (bath.html) */
 .xs-tools .xs-tool-bath { display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; text-decoration: none; background: #0e7490; border: 1px solid #0e7490; color: #fff; }
 .xs-tools .xs-tool-bath:hover { background: #155e75; }
+/* 원가·상세내역 칸이 있는 Ⅰ·Ⅱ 표만 가로로 넓게(그 표 안에서 좌우 스크롤), 특이사항·합계는 화면 폭에 맞춤 */
+.xs-sheet { min-width: 960px; }
+.xs-scroll { overflow-x: auto; }
+.xs-scroll > .xs-table { min-width: 1376px; }
