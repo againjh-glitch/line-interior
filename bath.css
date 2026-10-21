@@ -243,3 +243,14 @@
 @media print {
   #tab-form.print-form { display: block !important; }
 }
+
+/* 같은 번호 여러 줄 (8~15·26번): 번호 칸 합침, 줄 사이는 옅은 선 */
+.pp td.pp-no[rowspan] { vertical-align: middle; }
+.pp-row.sub:not(.grp-first) td, .pp-row.extra td { border-top-color: #d1d5db; }
+.pp-row.sub td { height: 32px; }
+.pp-cap { display: block; font-size: 10.5px; color: #6b7280; line-height: 1.1; }
+.pp-row.sub td.pp-nm { text-align: left; padding-left: 10px; }
+@media (max-width: 860px) {
+  .pp-row.sub:not(.grp-first), .pp-row.extra { margin-top: -4px; border-top-style: dashed; }
+  .pp-row.sub td.pp-nm { padding-left: 0; }
+}

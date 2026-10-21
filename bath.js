@@ -109,44 +109,29 @@ function metaHtml(l, i) {
 const priceVal = l => won(isSet(l.n) ? setPrice(find(l.n).n) : l.p);
 const nameInput = (l, i, ph) => `<input type="text" class="in-n" data-i="${i}" value="${esc(l.n)}" title="${esc(l.n)}" placeholder="${esc(ph)}" autocomplete="off" aria-label="${esc(lineLabel(l))} 제품명">`;
 
-// 줄 칸 (1~7, 16~25, 27, 추가 줄)
-function fullRow(l, i, first) {
-  const set = isSet(l.n);
-  return `<tr class="pp-row${l.n ? ' filled' : ''}${l.extra ? ' extra' : ''}" data-row="${i}">
-    <td class="pp-no">${first ? l.no : ''}</td>
-    <td class="pp-nm">${first ? esc(l.name) : ''}${first && !l.extra ? `<button class="pp-add" title="이 번호에 줄 추가" onclick="bathAddUnder(${i})">＋</button>` : ''}</td>
-    <td class="pp-prod">${nameInput(l, i, '제품명')}<div class="meta" data-meta="${i}">${metaHtml(l, i)}</div></td>
+// 견적서 한 줄. 같은 번호의 줄들은 번호 칸을 세로로 합침 (예: 8번 부자재 → 본드·압착·백시멘·에폭시 4줄)
+function lineRow(l, i, k, span) {
+  const set = isSet(l.n), first = k === 0;
+  const cap = first && l.sub && l.row ? `<small class="pp-cap">${esc(l.row)}</small>` : '';
+  const nm = l.extra ? '' : (l.sub ? `${esc(l.name)}/` : esc(l.name));
+  return `<tr class="pp-row${l.n ? ' filled' : ''}${l.extra ? ' extra' : ''}${l.sub ? ' sub' : ''}${first ? ' grp-first' : ''}" data-row="${i}">
+    ${first ? `<td class="pp-no"${span > 1 ? ` rowspan="${span}"` : ''}>${l.no}</td>` : ''}
+    <td class="pp-nm">${cap}${nm}${l.extra ? '' : `<button class="pp-add" title="이 칸 아래에 줄 추가" onclick="bathAddUnder(${i})">＋</button>`}</td>
+    <td class="pp-prod">${nameInput(l, i, '')}<div class="meta" data-meta="${i}">${metaHtml(l, i)}</div></td>
     <td class="pp-spec"><input type="text" class="in-spec" data-i="${i}" value="${esc(l.spec)}" aria-label="규격"></td>
-    <td class="pp-q"><input type="text" inputmode="decimal" class="in-q" data-i="${i}" value="${esc(l.q)}" aria-label="수량"></td>
+    <td class="pp-q"><input type="text" inputmode="decimal" class="in-q" data-i="${i}" value="${esc(l.q)}" aria-label="${esc(lineLabel(l))} 수량"></td>
     <td class="pp-p"><input type="text" inputmode="numeric" class="in-p" data-i="${i}" value="${priceVal(l)}"${set ? ' readonly title="세트 단가 = 구성품 합"' : ''} aria-label="단가"><div class="st" data-st="${i}"></div></td>
     <td class="pp-memo"><input type="text" class="in-m" data-i="${i}" value="${esc(l.memo)}" aria-label="비고">${l.extra ? `<button class="pp-del" onclick="bathDel(${i})" title="줄 삭제">✕</button>` : ''}</td>
-  </tr>`;
-}
-// 한 줄 안에 여러 칸 (8~15, 26) — 「본드/ ___ 압착/ ___」
-function subRow(group) {
-  const [i0] = group, l0 = S.lines[i0];
-  const cells = group.map(i => {
-    const l = S.lines[i], set = isSet(l.n);
-    return `<span class="sf${l.n ? ' filled' : ''}" data-row="${i}">
-      <span class="sf-lb">${esc(l.name)}/</span>${nameInput(l, i, '')}<input type="text" inputmode="decimal" class="in-q sf-q" data-i="${i}" value="${esc(l.q)}" placeholder="수량" aria-label="${esc(l.name)} 수량">
-      <span class="sf-2">단가 <input type="text" inputmode="numeric" class="in-p" data-i="${i}" value="${priceVal(l)}"${set ? ' readonly' : ''} aria-label="${esc(l.name)} 단가"><span class="st" data-st="${i}"></span><span class="meta" data-meta="${i}">${metaHtml(l, i)}</span></span>
-    </span>`;
-  }).join('');
-  const wide = !l0.row;   // 26번: 품명 칸 없이 줄 전체
-  return `<tr class="pp-subrow">
-    <td class="pp-no">${l0.no}</td>
-    ${wide ? `<td class="pp-subs" colspan="6">` : `<td class="pp-nm">${esc(l0.row)}</td><td class="pp-subs" colspan="5">`}${cells}</td>
   </tr>`;
 }
 
 function renderLines() {
   const rows = [];
-  for (let i = 0; i < S.lines.length; i++) {
-    const l = S.lines[i];
-    if (l.sub) {
-      const g = [i]; while (i + 1 < S.lines.length && S.lines[i + 1].sub && S.lines[i + 1].no === l.no) g.push(++i);
-      rows.push(subRow(g));
-    } else rows.push(fullRow(l, i, !(l.extra && i > 0 && S.lines[i - 1].no === l.no)));
+  for (let i = 0; i < S.lines.length; ) {
+    let j = i; while (j + 1 < S.lines.length && S.lines[j + 1].no === S.lines[i].no) j++;
+    const span = j - i + 1;
+    for (let k = 0; k < span; k++) rows.push(lineRow(S.lines[i + k], i + k, k, span));
+    i = j + 1;
   }
   $('#b-lines').innerHTML = rows.join('');
   $('#b-lines').querySelectorAll('input[data-i]').forEach(wireInput);
@@ -198,7 +183,7 @@ window.bathUsePrice = i => { const l = S.lines[i]; l.p = priceOf(find(l.n)); cha
 window.bathHistory = i => showHistory(find(S.lines[i].n));
 window.bathAddUnder = i => {
   const l = S.lines[i]; let k = i; while (k + 1 < S.lines.length && S.lines[k + 1].no === l.no && S.lines[k + 1].extra) k++;
-  S.lines.splice(k + 1, 0, Object.assign(newLine({ no: l.no, name: l.name, c: l.c }), { extra: 1 }));
+  S.lines.splice(k + 1, 0, Object.assign(newLine({ no: l.no, row: l.row, name: l.name, c: l.c, sub: l.sub }), { extra: 1 }));
   saveDraft(); renderLines(); $(`.in-n[data-i="${k + 1}"]`)?.focus();
 };
 window.bathDel = i => { S.lines.splice(i, 1); saveDraft(); renderLines(); renderOrder(); };
@@ -380,7 +365,7 @@ async function downloadXlsx() {
 
   // 견적서 시트: 종이 견적서 모양 그대로
   const we = wb.addWorksheet('견적서', { pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
-  we.columns = [4.5, 15, 46, 13, 8, 11, 14].map(width => ({ width }));
+  we.columns = [4.5, 17, 46, 13, 8, 11, 14].map(width => ({ width }));
   const ink = { style: 'thin', color: { argb: 'FF374151' } }, pbox = { top: ink, left: ink, bottom: ink, right: ink };
   const pen = { color: { argb: 'FF1E3A8A' }, size: 11 };
   we.mergeCells('A1:G1'); we.getCell('A1').value = '견 적 서';
@@ -392,27 +377,19 @@ async function downloadXlsx() {
   ['규격', '수량', '단가', '비고'].forEach((t, k) => { const col = 'DEFG'[k]; we.mergeCells(`${col}3:${col}4`); const c = we.getCell(`${col}3`); c.value = t; c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = pbox; });
   we.getCell('B4').value = '품명'; we.getCell('C4').value = '제품명';
   ['A4', 'B4', 'C4'].forEach(c => { we.getCell(c).border = pbox; we.getCell(c).alignment = { horizontal: 'center' }; });
-  const subTxt = l => `${l.name}/ ${l.n || ''}${l.q !== '' && l.n ? ' ' + l.q : ''}`;
   let r = 5;
-  for (let i = 0; i < S.lines.length; i++) {
-    const l = S.lines[i];
-    const row = we.getRow(r);
-    if (l.sub) {
-      const g = [l]; while (i + 1 < S.lines.length && S.lines[i + 1].sub && S.lines[i + 1].no === l.no) g.push(S.lines[++i]);
-      row.getCell(1).value = l.no;
-      if (l.row) { row.getCell(2).value = l.row; we.mergeCells(`C${r}:G${r}`); row.getCell(3).value = g.map(subTxt).join('      '); }
-      else { we.mergeCells(`B${r}:G${r}`); row.getCell(2).value = g.map(subTxt).join('      '); }
-      row.getCell(l.row ? 3 : 2).font = pen; row.getCell(l.row ? 3 : 2).alignment = { wrapText: true, vertical: 'middle' };
-      row.height = 30;
-    } else {
-      const first = !(l.extra && i > 0 && S.lines[i - 1].no === l.no);
-      const p = l.n ? linePrice(l) : '';
-      row.values = [first ? l.no : '', first ? l.name : '', l.n || '', l.spec || '', l.q === '' ? null : l.q, p === '' ? null : p, l.memo || ''];
-      [3, 4, 5, 6, 7].forEach(j => row.getCell(j).font = pen);
-      row.getCell(6).numFmt = '#,##0'; row.height = 22;
+  for (let i = 0; i < S.lines.length; ) {
+    let j = i; while (j + 1 < S.lines.length && S.lines[j + 1].no === S.lines[i].no) j++;
+    for (let k = i; k <= j; k++) {
+      const l = S.lines[k], row = we.getRow(r + k - i), p = l.n ? linePrice(l) : '';
+      const nm = l.extra ? '' : (l.sub ? l.name + '/' : l.name);
+      row.values = [k === i ? l.no : null, nm, l.n || '', l.spec || '', l.q === '' ? null : l.q, p === '' ? null : p, l.memo || ''];
+      [3, 4, 5, 6, 7].forEach(c => row.getCell(c).font = pen);
+      row.getCell(6).numFmt = '#,##0'; row.height = 20;
+      for (let c = 1; c <= 7; c++) { const cell = row.getCell(c); cell.border = pbox; if (c <= 2) cell.alignment = { horizontal: 'center', vertical: 'middle' }; }
     }
-    for (let j = 1; j <= 7; j++) { const c = row.getCell(j); c.border = pbox; if (j === 1 || (j === 2 && !(l.sub && !l.row))) c.alignment = { horizontal: 'center', vertical: 'middle' }; }
-    r++;
+    if (j > i) we.mergeCells(`A${r}:A${r + j - i}`);
+    r += j - i + 1; i = j + 1;
   }
   const buf = await wb.xlsx.writeBuffer();
   const a = document.createElement('a');
