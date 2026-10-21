@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>욕실 자재 견적서 — 라인 인테리어</title>
+  <link rel="stylesheet" href="style.css?v=202610211700">
+  <link rel="stylesheet" href="bath.css?v=202610211700">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+</head>
+<body class="b-body">
+<header class="b-top">
+  <div class="b-top-inner">
+    <div class="b-title">
+      <span class="b-logo">🛁</span>
+      <div>
+        <h1>욕실 자재 견적서</h1>
+        <p>제품명·수량만 넣으면 지난 단가가 들어가고, 자재 주문서가 자동으로 만들어집니다</p>
+      </div>
+    </div>
+    <a class="b-back" href="index.html">← 견적 계산기로</a>
+  </div>
+  <nav class="b-tabs" role="tablist">
+    <button role="tab" data-tab="form" class="on">📝 견적서 작성</button>
+    <button role="tab" data-tab="order">📦 자재 주문서 <span id="b-order-count" class="b-pill"></span></button>
+    <button role="tab" data-tab="prices">📈 단가 이력</button>
+  </nav>
+</header>
+
+<main class="b-wrap">
+  <!-- ① 견적서 작성 -->
+  <section id="tab-form" class="b-tab">
+    <div class="b-toolbar">
+      <button id="b-new">🆕 새 견적</button>
+      <button id="b-save" class="b-primary">💾 저장</button>
+      <button id="b-load">📂 불러오기</button>
+      <span id="b-saved-at" class="b-muted"></span>
+    </div>
+
+    <div class="b-card b-info">
+      <label>일자<input id="i-date" type="date"></label>
+      <label>현장명<input id="i-site" type="text" placeholder="소사주공 10동"></label>
+      <label>전화번호<input id="i-tel" type="text" placeholder="010-0000-0000"></label>
+      <label class="b-wide">주소<input id="i-addr" type="text" placeholder="주소"></label>
+      <label class="b-wide">도착일시 / 배송 메모<input id="i-memo" type="text" placeholder="예: 11/5(수) 오전 8시 도착, 사다리차"></label>
+    </div>
+
+    <p class="b-hint">제품명 칸을 누르면 그 줄에 맞는 자재가 <b>지난 단가</b>와 함께 나옵니다. 몇 글자만 쳐도 찾아요 (예: <code>738</code>, <code>에폭시</code>, <code>600</code>). 목록에 없으면 그냥 쓰고 단가를 넣으면 됩니다.</p>
+
+    <div class="b-card b-lines-card">
+      <div class="b-lines-head">
+        <span>No</span><span>품명</span><span>제품명</span><span>수량</span><span>단가(원가)</span><span>금액</span><span>비고</span><span>상태</span><span></span>
+      </div>
+      <div id="b-lines"></div>
+      <button id="b-addline" class="b-addline">＋ 기타 줄 추가</button>
+    </div>
+  </section>
+
+  <!-- ② 자재 주문서 -->
+  <section id="tab-order" class="b-tab hidden">
+    <div class="b-toolbar">
+      <button id="b-copy" class="b-primary">📋 엑셀에 붙여넣기용 복사</button>
+      <button id="b-xlsx">⬇ 엑셀 파일 저장</button>
+      <button id="b-print">🖨 인쇄</button>
+      <span id="b-copy-msg" class="b-muted"></span>
+    </div>
+    <p class="b-hint">「욕실 단가 (3)」 탭과 같은 칸 순서입니다. <b>복사</b> 후 엑셀에서 붙여넣을 칸을 누르고 <kbd>Ctrl</kbd>+<kbd>V</kbd> 하세요. 세트로 고른 자재는 부속까지 풀어서 들어갑니다.</p>
+    <div class="b-card b-order-card"><div id="b-order"></div></div>
+  </section>
+
+  <!-- ③ 단가 이력 -->
+  <section id="tab-prices" class="b-tab hidden">
+    <div class="b-toolbar">
+      <input id="p-q" type="search" placeholder="제품명 검색 (예: 738, 에떼, 600*600)" class="b-search">
+      <select id="p-cat"><option value="">전체 분류</option></select>
+      <button id="b-backup">⬇ 백업</button>
+      <button id="b-restore">⬆ 백업 가져오기</button>
+      <input type="file" id="b-restore-file" accept=".json" hidden>
+    </div>
+    <p class="b-hint">엑셀 「욕실 단가 (2)·(3)」에 적힌 지난 주문 <span id="p-total"></span>을 모았습니다. 줄을 누르면 현장별 단가가 보여요. <b>최근</b>은 엑셀에서 아래쪽(나중)에 적힌 주문 기준입니다.</p>
+    <div class="b-card"><div id="b-prices"></div></div>
+  </section>
+</main>
+
+<div id="b-total-bar" class="b-total-bar">
+  <span>합계 (원가)</span><b id="b-total">0</b>
+  <span id="b-warn" class="b-warn"></span>
+</div>
+
+<div id="b-ac" class="b-ac hidden" role="listbox"></div>
+
+<div id="b-modal" class="b-modal hidden">
+  <div class="b-modal-box">
+    <div class="b-modal-head"><span id="b-modal-title"></span><button class="b-x" onclick="closeModal()">✕</button></div>
+    <div id="b-modal-body"></div>
+  </div>
+</div>
+
+<script src="bath-data.js?v=202610211700"></script>
+<script src="bath.js?v=202610211700"></script>
+</body>
+</html>

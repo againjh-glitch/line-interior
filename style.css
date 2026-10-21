@@ -1694,3 +1694,6 @@ textarea.xs-memo { display: block; resize: vertical; min-height: 34px; line-heig
 .bd-pk-top input { background: #fff; color: #111; }
 .bd-pk-k { color: #1f2937; }
 .bd-pk-row:hover { background: #fff; }
+/* 욕실 자재 견적서 링크 (bath.html) */
+.xs-tools .xs-tool-bath { display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; text-decoration: none; background: #0e7490; border: 1px solid #0e7490; color: #fff; }
+.xs-tools .xs-tool-bath:hover { background: #155e75; }
