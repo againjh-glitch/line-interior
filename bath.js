@@ -801,6 +801,78 @@ window.bathVendorList = () => {
   $('#b-modal').classList.remove('hidden');
 };
 
+
+/* 여기가 우리집에 보낼 단가 요청서 — 단가 칸을 비운 견적서를 JPG로 저장 */
+function downloadVendorJpg() {
+  if (!S.lines.some(l => l.n)) { alert('견적서에 제품을 먼저 넣어 주세요.'); return; }
+  const FONT = '"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif';
+  const W = 1600, PAD = 50, col = [60, 190, 0, 170, 100, 150, 220];   // No 품명 제품명(나머지) 규격 수량 단가 비고
+  col[2] = W - PAD * 2 - col.reduce((a, b) => a + b, 0);
+  const xs = [PAD]; col.forEach(w => xs.push(xs[xs.length - 1] + w));
+  const HEAD_H = 230, TH = 50, RH = 46;
+  const H = HEAD_H + TH + RH * S.lines.length + 70;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  const text = (t, x, y, w, { size = 22, bold = false, align = 'left', color = '#111', min = 15 } = {}) => {
+    t = String(t ?? ''); if (!t) return;
+    let sz = size; g.font = `${bold ? 700 : 400} ${sz}px ${FONT}`;
+    while (g.measureText(t).width > w - 16 && sz > min) { sz--; g.font = `${bold ? 700 : 400} ${sz}px ${FONT}`; }
+    while (g.measureText(t).width > w - 16 && t.length > 1) t = t.slice(0, -2) + '…';
+    g.fillStyle = color; g.textBaseline = 'middle'; g.textAlign = align;
+    g.fillText(t, align === 'center' ? x + w / 2 : align === 'right' ? x + w - 8 : x + 8, y);
+  };
+  const line = (x1, y1, x2, y2, c = '#374151', lw = 1.5) => { g.strokeStyle = c; g.lineWidth = lw; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); };
+  // 머리
+  text('견 적 서', 0, 70, W, { size: 52, align: 'center', bold: true });
+  const i = S.info, pen = '#1e3a8a';
+  text('일자:', PAD, 140, 80, { size: 22 }); text(i.date || '', PAD + 70, 140, 300, { size: 24, color: pen });
+  text('상호:', PAD + 470, 140, 80, { size: 22 }); text(i.shop || '', PAD + 540, 140, 360, { size: 24, color: pen });
+  text('전화번호:', W - PAD - 430, 140, 120, { size: 22 }); text(i.tel || '', W - PAD - 320, 140, 320, { size: 24, color: pen });
+  text('주소:', PAD, 190, 80, { size: 22 }); text([i.addr, i.memo].filter(Boolean).join('   ·   '), PAD + 70, 190, W - PAD * 2 - 70, { size: 24, color: pen });
+  [[160, PAD + 70, PAD + 400], [160, PAD + 540, PAD + 900], [160, W - PAD - 320, W - PAD], [210, PAD + 70, W - PAD]].forEach(([y, a, b]) => line(a, y, b, y, '#cbd5e1', 1));
+  // 표 머리
+  let y = HEAD_H;
+  g.fillStyle = '#f3f4f6'; g.fillRect(PAD, y, W - PAD * 2, TH);
+  ['No', '품명', '제품명', '규격', '수량', '단가', '비고'].forEach((t, k) => text(t, xs[k], y + TH / 2, col[k], { size: 22, bold: true, align: 'center' }));
+  line(PAD, y, W - PAD, y, '#111', 2);
+  y += TH; line(PAD, y, W - PAD, y);
+  // 줄 (같은 번호는 번호 칸 합침, 빈 줄은 옅은 회색)
+  const top = y;
+  for (let a = 0; a < S.lines.length; ) {
+    let b = a; while (b + 1 < S.lines.length && S.lines[b + 1].no === S.lines[a].no) b++;
+    const y0 = y;
+    for (let k = a; k <= b; k++) {
+      const l = S.lines[k];
+      if (!l.n) { g.fillStyle = '#f4f5f7'; g.fillRect(xs[1], y, W - PAD - xs[1], RH); }
+      const nm = l.extra ? '' : (l.sub ? l.name + '/' : l.name);
+      const cap = k === a && l.sub && l.row;   // 묶음 첫 줄 위에 원래 품명 (부자재 등)
+      if (cap) text(l.row, xs[1], y + 11, col[1], { size: 13, color: '#6b7280' });
+      text(nm, xs[1], y + RH / 2 + (cap ? 7 : 0), col[1], { size: 20, align: l.sub ? 'left' : 'center', color: l.n ? '#111' : '#9ca3af' });
+      if (l.n) {
+        text(l.n, xs[2], y + RH / 2, col[2], { size: 22, color: pen });
+        text(l.spec || '', xs[3], y + RH / 2, col[3], { size: 20, color: pen });
+        text(l.q === '' ? '' : l.q, xs[4], y + RH / 2, col[4], { size: 22, align: 'right', color: pen });
+        text(l.memo || '', xs[6], y + RH / 2, col[6], { size: 18, color: pen });
+      }
+      y += RH;
+      if (k < b) line(xs[1], y, W - PAD, y, '#d1d5db', 1);   // 같은 번호 안은 옅은 선
+    }
+    text(S.lines[a].no, xs[0], (y0 + y) / 2, col[0], { size: 20, align: 'center' });
+    line(PAD, y, W - PAD, y);
+    a = b + 1;
+  }
+  xs.forEach((x, k) => line(x, HEAD_H, x, y, k === 0 || k === xs.length - 1 ? '#111' : '#374151', k === 0 || k === xs.length - 1 ? 2 : 1.5));
+  line(PAD, y, W - PAD, y, '#111', 2);
+  text(`${i.shop || ''}${i.tel ? '  ' + i.tel : ''} · 단가 칸에 적어서 보내주세요`, PAD, y + 36, W - PAD * 2, { size: 18, color: '#6b7280' });
+  cv.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `단가요청_${(i.site || i.addr || '현장').replace(/[\\/:*?"<>|]/g, '').slice(0, 30)}_${i.date || today()}.jpg`;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }, 'image/jpeg', 0.92);
+}
+
 async function sendToVendor() {
   const filled = S.lines.filter(l => l.n);
   if (!filled.length) { alert('견적서에 제품을 먼저 넣어 주세요.'); return; }
@@ -966,7 +1038,7 @@ catSel.onchange = () => { pLimit = 120; renderPrices(); };
 $('#p-total').textContent = `${BATH_ITEMS.reduce((s, x) => s + (x.h ? x.h.length : 0), 0)}건 (자재 ${BATH_ITEMS.filter(x => x.h).length}종)`;
 renderAll();
 const start = (location.hash || '').slice(1);
-$('#b-send-vendor').onclick = sendToVendor;
+$('#b-send-vendor').onclick = downloadVendorJpg;
 if (start.startsWith('reply=')) receiveVendor(start.slice(6));
 showTab(['form', 'req', 'order', 'prices'].includes(start) ? start : 'form');
 })();
