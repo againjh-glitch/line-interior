@@ -403,3 +403,13 @@
   .vq-foot { grid-template-columns: 1fr; }
 }
 @media print { .vq-intro, .vq-send, .vq-foot, .vq-done { display: none !important; } }
+
+/* 8~15·26번: 번호 | 분류(합침) | 세부 */
+.pp .c-grp { width: 92px; } .pp .c-sub { width: 108px; }
+.pp td.pp-grp { text-align: center; vertical-align: middle; font-size: 13px; background: #fff !important; color: var(--ink) !important; }
+.pp td.pp-subnm { text-align: center !important; padding-left: 5px !important; }
+@media (max-width: 860px) {
+  .pp-row td.pp-grp { grid-column: 2 / -1; text-align: left; font-weight: 700; }
+  .pp-row.sub:not(.grp-first) td.pp-subnm, .pp-row.sub td.pp-subnm { grid-column: 2 / -1; text-align: left !important; }
+  .pp-row.sub.grp-first td.pp-subnm { grid-column: 1 / -1; }
+}

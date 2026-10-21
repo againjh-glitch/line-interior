@@ -96,7 +96,8 @@ function syncInfo(k) {
   document.querySelectorAll(`[data-info="${k}"]`).forEach(el => { if (document.activeElement !== el) el.value = S.info[k] || ''; });
 }
 const sizeOf = n => { const m = String(n || '').match(/\d{3,4}\s*[*xX×]\s*\d{3,4}(\s*[*xX]\s*\d+T?)?/g); return m ? m[m.length - 1].replace(/\s/g, '') : ''; };
-const lineLabel = l => l.sub && l.row ? `${l.row} · ${l.name}` : (l.name || '');
+const grpName = l => l.row || (l.sub ? '청소건/수전' : '');   // 26번은 종이에 분류 이름이 없어 이렇게 표시
+const lineLabel = l => l.sub && grpName(l) ? `${grpName(l)} · ${l.name}` : (l.name || '');
 
 function lineStatus(l) {
   if (!l.n) return ['', ''];
@@ -132,11 +133,15 @@ const nameInput = (l, i, ph) => `<input type="text" class="in-n" data-i="${i}" v
 // 견적서 한 줄. 같은 번호의 줄들은 번호 칸을 세로로 합침 (예: 8번 부자재 → 본드·압착·백시멘·에폭시 4줄)
 function lineRow(l, i, k, span) {
   const set = isSet(l.n), first = k === 0;
-  const cap = first && l.sub && l.row ? `<small class="pp-cap">${esc(l.row)}</small>` : '';
-  const nm = l.extra ? '' : (l.sub ? `${esc(l.name)}/` : esc(l.name));
+  const nm = l.extra ? '' : esc(l.name);
+  const add = l.extra ? '' : `<button class="pp-add" title="이 칸 아래에 줄 추가" onclick="bathAddUnder(${i})">＋</button>`;
+  // 8~15·26번: 분류 칸(합침) + 세부 칸 / 나머지: 품명이 두 칸을 합쳐 씀
+  const nmCells = l.sub
+    ? `${first ? `<td class="pp-grp"${span > 1 ? ` rowspan="${span}"` : ''}>${esc(grpName(l))}</td>` : ''}<td class="pp-nm pp-subnm">${nm}${add}</td>`
+    : `<td class="pp-nm" colspan="2">${nm}${add}</td>`;
   return `<tr class="pp-row${l.n ? ' filled' : ''}${l.extra ? ' extra' : ''}${l.sub ? ' sub' : ''}${first ? ' grp-first' : ''}" data-row="${i}">
     ${first ? `<td class="pp-no"${span > 1 ? ` rowspan="${span}"` : ''}>${l.no}</td>` : ''}
-    <td class="pp-nm">${cap}${nm}${l.extra ? '' : `<button class="pp-add" title="이 칸 아래에 줄 추가" onclick="bathAddUnder(${i})">＋</button>`}</td>
+    ${nmCells}
     <td class="pp-prod">${nameInput(l, i, '')}<div class="meta" data-meta="${i}">${metaHtml(l, i)}</div></td>
     <td class="pp-spec"><input type="text" class="in-spec" data-i="${i}" value="${esc(l.spec)}" aria-label="규격"></td>
     <td class="pp-q"><input type="text" inputmode="decimal" class="in-q" data-i="${i}" value="${esc(l.q)}" aria-label="${esc(lineLabel(l))} 수량"></td>
@@ -401,30 +406,34 @@ async function downloadXlsx() {
 
   // 견적서 시트: 종이 견적서 모양 그대로
   const we = wb.addWorksheet('견적서', { pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
-  we.columns = [4.5, 17, 50, 13, 8, 11, 14].map(width => ({ width }));
+  we.columns = [4.5, 12, 15, 46, 13, 8, 11, 14].map(width => ({ width }));
   const ink = { style: 'thin', color: { argb: 'FF374151' } }, pbox = { top: ink, left: ink, bottom: ink, right: ink };
   const pen = { color: { argb: 'FF1E3A8A' }, size: 11 };
-  we.mergeCells('A1:G1'); we.getCell('A1').value = '견 적 서';
+  we.mergeCells('A1:H1'); we.getCell('A1').value = '견 적 서';
   we.getCell('A1').font = { size: 20, name: '바탕' }; we.getCell('A1').alignment = { horizontal: 'center' }; we.getRow(1).height = 34;
   we.getCell('A2').value = '일자:'; we.getCell('B2').value = S.info.date || ''; we.getCell('C2').value = '상호:  ' + (S.info.shop || '');
-  we.getCell('E2').value = '전화번호:'; we.mergeCells('F2:G2'); we.getCell('F2').value = S.info.tel || '';
-  [['B2'], ['C2'], ['F2']].forEach(([c]) => we.getCell(c).font = pen);
-  we.getCell('A3').value = '주소:'; we.mergeCells('B3:G3'); we.getCell('B3').value = S.info.addr || ''; we.getCell('B3').font = pen;
+  we.getCell('F2').value = '전화번호:'; we.mergeCells('G2:H2'); we.getCell('G2').value = S.info.tel || '';
+  [['B2'], ['C2'], ['G2']].forEach(([c]) => we.getCell(c).font = pen);
+  we.getCell('A3').value = '주소:'; we.mergeCells('B3:H3'); we.getCell('B3').value = S.info.addr || ''; we.getCell('B3').font = pen;
   [2, 3].forEach(n => we.getRow(n).height = 22);
-  const hd = we.getRow(4); hd.values = ['No', '품명', '제품명', '규격', '수량', '단가', '비고']; hd.height = 24;
+  const hd = we.getRow(4); hd.values = ['No', '품명', '', '제품명', '규격', '수량', '단가', '비고']; hd.height = 24;
+  we.mergeCells('B4:C4');
   hd.eachCell(c => { c.border = pbox; c.alignment = { horizontal: 'center', vertical: 'middle' }; });
   let r = 5;
   for (let i = 0; i < S.lines.length; ) {
     let j = i; while (j + 1 < S.lines.length && S.lines[j + 1].no === S.lines[i].no) j++;
     for (let k = i; k <= j; k++) {
       const l = S.lines[k], row = we.getRow(r + k - i), p = l.n ? linePrice(l) : '';
-      const nm = l.extra ? '' : (l.sub ? l.name + '/' : l.name);
-      row.values = [k === i ? l.no : null, nm, l.n || '', l.spec || '', l.q === '' ? null : l.q, p === '' ? null : p, l.memo || ''];
-      [3, 4, 5, 6, 7].forEach(c => row.getCell(c).font = pen);
-      row.getCell(6).numFmt = '#,##0'; row.height = 20;
-      for (let c = 1; c <= 7; c++) { const cell = row.getCell(c); cell.border = pbox; if (c <= 2) cell.alignment = { horizontal: 'center', vertical: 'middle' }; }
+      const nm = l.extra ? '' : l.name, rr = r + k - i;
+      row.values = [k === i ? l.no : null, l.sub ? (k === i ? grpName(l) : null) : nm, l.sub ? nm : null, l.n || '', l.spec || '', l.q === '' ? null : l.q, p === '' ? null : p, l.memo || ''];
+      if (!l.sub) we.mergeCells(`B${rr}:C${rr}`);
+      [4, 5, 6, 7, 8].forEach(c => row.getCell(c).font = pen);
+      row.getCell(7).numFmt = '#,##0'; row.height = 20;
+      if (!l.n) for (let c = 2; c <= 8; c++) row.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF4F5F7' } };
+      for (let c = 1; c <= 8; c++) { const cell = row.getCell(c); cell.border = pbox; if (c <= 3) cell.alignment = { horizontal: 'center', vertical: 'middle' }; }
     }
     if (j > i) we.mergeCells(`A${r}:A${r + j - i}`);
+    if (j > i && S.lines[i].sub) we.mergeCells(`B${r}:B${r + j - i}`);
     r += j - i + 1; i = j + 1;
   }
   addReqSheets(wb);
@@ -806,9 +815,10 @@ window.bathVendorList = () => {
 function downloadVendorJpg() {
   if (!S.lines.some(l => l.n)) { alert('견적서에 제품을 먼저 넣어 주세요.'); return; }
   const FONT = '"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif';
-  const W = 1600, PAD = 50, col = [60, 190, 0, 170, 100, 150, 220];   // No 품명 제품명(나머지) 규격 수량 단가 비고
+  const W = 1600, PAD = 50, col = [60, 300, 0, 160, 90, 140, 210];   // No 품명(분류+세부) 제품명(나머지) 규격 수량 단가 비고
   col[2] = W - PAD * 2 - col.reduce((a, b) => a + b, 0);
   const xs = [PAD]; col.forEach(w => xs.push(xs[xs.length - 1] + w));
+  const SUBX = xs[1] + 130;   // 분류 | 세부 나누는 선
   const HEAD_H = 230, TH = 50, RH = 46;
   const H = HEAD_H + TH + RH * S.lines.length + 70;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -845,10 +855,12 @@ function downloadVendorJpg() {
     for (let k = a; k <= b; k++) {
       const l = S.lines[k];
       if (!l.n) { g.fillStyle = '#f4f5f7'; g.fillRect(xs[1], y, W - PAD - xs[1], RH); }
-      const nm = l.extra ? '' : (l.sub ? l.name + '/' : l.name);
-      const cap = k === a && l.sub && l.row;   // 묶음 첫 줄 위에 원래 품명 (부자재 등)
-      if (cap) text(l.row, xs[1], y + 11, col[1], { size: 13, color: '#6b7280' });
-      text(nm, xs[1], y + RH / 2 + (cap ? 7 : 0), col[1], { size: 20, align: l.sub ? 'left' : 'center', color: l.n ? '#111' : '#9ca3af' });
+      const nm = l.extra ? '' : l.name;
+      if (l.sub) {   // 분류 | 세부
+        if (!l.n) { g.fillStyle = '#f4f5f7'; g.fillRect(xs[1], y, SUBX - xs[1], RH); g.fillStyle = '#fff'; }
+        text(nm, SUBX, y + RH / 2, xs[2] - SUBX, { size: 20, align: 'center', color: l.n ? '#111' : '#9ca3af' });
+        line(SUBX, y, SUBX, y + RH, '#374151', 1.5);
+      } else text(nm, xs[1], y + RH / 2, col[1], { size: 20, align: 'center', color: l.n ? '#111' : '#9ca3af' });
       if (l.n) {
         text(l.n, xs[2], y + RH / 2, col[2], { size: 22, color: pen });
         text(l.spec || '', xs[3], y + RH / 2, col[3], { size: 20, color: pen });
@@ -856,9 +868,10 @@ function downloadVendorJpg() {
         text(l.memo || '', xs[6], y + RH / 2, col[6], { size: 18, color: pen });
       }
       y += RH;
-      if (k < b) line(xs[1], y, W - PAD, y, '#d1d5db', 1);   // 같은 번호 안은 옅은 선
+      if (k < b) line(S.lines[a].sub ? SUBX : xs[1], y, W - PAD, y, '#9ca3af', 1);   // 같은 번호 안은 옅은 선
     }
     text(S.lines[a].no, xs[0], (y0 + y) / 2, col[0], { size: 20, align: 'center' });
+    if (S.lines[a].sub) { g.fillStyle = '#fff'; g.fillRect(xs[1] + 1, y0 + 1, SUBX - xs[1] - 2, y - y0 - 2); text(grpName(S.lines[a]), xs[1], (y0 + y) / 2, SUBX - xs[1], { size: 20, align: 'center' }); }
     line(PAD, y, W - PAD, y);
     a = b + 1;
   }
