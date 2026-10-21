@@ -1701,3 +1701,10 @@ textarea.xs-memo { display: block; resize: vertical; min-height: 34px; line-heig
 .xs-sheet { min-width: 960px; }
 .xs-scroll { overflow-x: auto; }
 .xs-scroll > .xs-table { min-width: 1376px; }
+/* 시트 화면은 양옆을 넓게 — 화면 폭을 거의 다 씀 */
+body.sheet-mode .wrap { max-width: 1680px; padding-left: 16px; padding-right: 16px; }
+.xs-sheet { padding: 18px 16px 24px; }
+.xs-table .c-proc { width: 80px; } .xs-table .c-item { width: 112px; } .xs-table .c-amt { width: 96px; }
+.xs-table .c-tot { width: 110px; } .xs-table .c-base { width: 96px; } .xs-table .c-ox { width: 60px; }
+.xs-table .c-cost { width: 92px; } .xs-table .c-memo { width: 190px; } .xs-table .c-note { width: 150px; }
+.xs-scroll > .xs-table { min-width: 1140px; }
