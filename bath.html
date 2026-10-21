@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>욕실 자재 견적서 — 라인 인테리어</title>
-  <link rel="stylesheet" href="style.css?v=202610212000">
-  <link rel="stylesheet" href="bath.css?v=202610212000">
+  <link rel="stylesheet" href="style.css?v=202610212100">
+  <link rel="stylesheet" href="bath.css?v=202610212100">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
 <body class="b-body">
@@ -32,6 +32,7 @@
   <!-- ① 견적서 작성 -->
   <section id="tab-form" class="b-tab">
     <div class="b-toolbar">
+      <button data-photo class="b-photo">📷 사진으로 채우기</button>
       <button id="b-new">🆕 새 견적</button>
       <button id="b-save" class="b-primary">💾 저장</button>
       <button id="b-load">📂 불러오기</button>
@@ -69,6 +70,7 @@
     <div class="b-toolbar">
       <button id="b-req-print-blank" class="b-primary">🖨 현장에 붙일 빈 양식 인쇄</button>
       <button id="b-req-print">🖨 적은 내용 인쇄</button>
+      <button data-photo class="b-photo">📷 사진으로 채우기</button>
       <button id="b-req-add">＋ 줄 5개</button>
       <button id="b-req-clear">🧹 비우기</button>
     </div>
@@ -134,9 +136,10 @@
   </div>
 </div>
 
-<script src="share.js?v=202610212000"></script>
-<script src="vendor-data.js?v=202610212000"></script>
-<script src="bath-data.js?v=202610212000"></script>
-<script src="bath.js?v=202610212000"></script>
+<script src="share.js?v=202610212100"></script>
+<script src="vendor-data.js?v=202610212100"></script>
+<script src="bath-data.js?v=202610212100"></script>
+<script src="bath.js?v=202610212100"></script>
+<script src="bath-photo.js?v=202610212100"></script>
 </body>
 </html>

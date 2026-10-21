@@ -327,3 +327,20 @@
 @media (max-width: 860px) {
   .pp-paper .pp-head { grid-template-columns: 1fr; }
 }
+
+/* 사진으로 채우기 */
+.b-toolbar .b-photo { background: #0e7490; border-color: #0e7490; color: #fff; font-weight: 700; }
+.ph-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.ph-tabs button { flex: 1; font: inherit; padding: 8px; border: 1px solid var(--bd2); background: var(--bg2); color: var(--tx); border-radius: 8px; cursor: pointer; }
+.ph-tabs button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+.ph-file { display: block; border: 2px dashed var(--bd2); border-radius: 12px; padding: 18px; text-align: center; cursor: pointer; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+.ph-file input { display: none; }
+#ph-preview img { max-width: 100%; max-height: 260px; display: block; margin: 0 auto 8px; border-radius: 8px; }
+.ph-key { margin: 8px 0; font-size: 13px; }
+.ph-key summary { cursor: pointer; font-weight: 700; margin-bottom: 6px; }
+.ph-key input, .ph-key select { margin-top: 6px; }
+.ph-forget { margin-top: 6px; font: inherit; font-size: 12px; border: 1px solid var(--bd2); background: var(--bg); color: var(--tx2); border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+.ph-go { margin-top: 8px; border-radius: 8px; }
+.ph-go:disabled { opacity: .5; cursor: default; }
+#ph-paste { width: 100%; font: 12px/1.4 ui-monospace, monospace; padding: 8px; border: 1px solid var(--bd2); border-radius: 8px; background: var(--bg2); color: var(--tx); }
+.m-raw { color: #0e7490; }

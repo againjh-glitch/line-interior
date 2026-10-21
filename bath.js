@@ -112,6 +112,10 @@ function lineAmount(l) {
   return p === '' ? '' : l.q * p;
 }
 function metaHtml(l, i) {
+  const raw = l.raw && l.raw !== l.n ? `<span class="m-raw">📷 ${esc(l.raw)}</span>` : '';
+  return raw + metaCore(l, i);
+}
+function metaCore(l, i) {
   const it = l.n ? find(l.n) : null;
   if (!it) return l.n ? '<span class="m-new">목록에 없음 — 단가 넣으면 「내 단가」로 기억</span>' : '';
   if (isSet(it.n)) return `<span>세트: ${esc(BATH_SETS[it.n].map(([c, q]) => c.split(/[\[(]/)[0].trim() + (q > 1 ? ' ×' + q : '')).join(' · '))}</span>`;
@@ -593,7 +597,7 @@ function refreshReq(i) {
   const row = $(`.rq-row[data-r="${i}"]`); if (row) row.classList.toggle('filled', !!r.n);
   const it = r.n ? findReq(r) : null;
   const m = $(`[data-rmeta="${i}"]`);
-  if (m) m.innerHTML = !r.n ? '' : it ? `<span>${esc(it.v)}${it.d ? ' · ' + esc(it.d) : ''}${it.note ? ' · ' + esc(it.note) : ''}</span>` : '<span class="m-new">목록에 없음 — 단가 넣으면 「내 단가」로 기억</span>';
+  if (m) m.innerHTML = (r.raw && r.raw !== r.n ? `<span class="m-raw">📷 ${esc(r.raw)}</span>` : '') + (!r.n ? '' : it ? `<span>${esc(it.v)}${it.d ? ' · ' + esc(it.d) : ''}${it.note ? ' · ' + esc(it.note) : ''}</span>` : '<span class="m-new">목록에 없음 — 단가 넣으면 「내 단가」로 기억</span>');
   const pe = $(`.rq-p[data-r="${i}"]`); if (pe) { if (document.activeElement !== pe) pe.value = won(r.p); pe.classList.toggle('noprice', !!(r.n && r.p === '')); }
   ['spec', 'u'].forEach(f => { const el = $(`.rq-${f}[data-r="${i}"]`); if (el && document.activeElement !== el) el.value = r[f] || ''; });
   const a = $(`[data-ramt="${i}"]`); if (a) a.textContent = won(reqAmt(r));
@@ -741,6 +745,66 @@ function printReq(blank) {
   setTimeout(() => { window.print(); setTimeout(done, 500); }, 50);
 }
 
+
+/* ═════════ 사진·붙여넣기로 채우기 (bath-photo.js 가 씀) ═════════ */
+const normName = t => String(t || '').replace(/[\s/·]/g, '').toLowerCase();
+const toQty = v => { if (v === '' || v == null) return ''; const m = String(v).replace(/,/g, '').match(/\d+(\.\d+)?/); return m ? Number(m[0]) : ''; };
+let UNDO = null;
+function applyFill(data) {
+  if (!data || typeof data !== 'object') throw new Error('내용이 비어 있어요');
+  UNDO = JSON.stringify(S);
+  const res = { bath: 0, req: 0, noPrice: [], skipped: [] };
+  const info = data.info || {};
+  if (info.date && /^\d{4}-\d{2}-\d{2}$/.test(info.date)) S.info.date = info.date;
+  ['shop', 'tel', 'addr', 'site', 'memo'].forEach(k => { if (info[k]) S.info[k] = String(info[k]); });
+  (data.lines || []).forEach(it => {
+    if (!it || !(it.n || it.raw)) return;
+    const no = Number(it.no);
+    const grp = S.lines.map((l, i) => [l, i]).filter(([l]) => l.no === no);
+    if (!grp.length) { res.skipped.push(it.raw || it.n); return; }
+    let hit = grp.find(([l]) => !l.n && !l.extra && (!l.sub || normName(l.name) === normName(it.name)))
+           || grp.find(([l]) => !l.n && l.extra);
+    let idx;
+    if (hit) idx = hit[1];
+    else {   // 같은 번호에 줄 추가
+      const last = grp[grp.length - 1], base = grp.find(([l]) => !l.sub || normName(l.name) === normName(it.name)) || grp[0];
+      idx = last[1] + 1;
+      S.lines.splice(idx, 0, Object.assign(newLine({ no, row: base[0].row, name: base[0].name, c: base[0].c, sub: base[0].sub, extra: 1 }), { extra: 1 }));
+    }
+    const l = S.lines[idx], cat = find(it.n || '');
+    l.n = cat ? cat.n : String(it.n || it.raw);
+    l.raw = it.raw ? String(it.raw) : '';
+    l.p = cat ? priceOf(cat) : (it.p != null && it.p !== '' ? toQty(it.p) : '');
+    l.spec = it.spec ? String(it.spec) : (cat ? sizeOf(cat.n) : '');
+    l.q = toQty(it.q);
+    l.memo = it.memo ? String(it.memo) : '';
+    if (!isSet(l.n) && l.p === '') res.noPrice.push(l.n);
+    res.bath++;
+  });
+  (data.rows || []).forEach(it => {
+    if (!it || !(it.n || it.raw)) return;
+    let i = S.req.findIndex(r => !r.n && !r.who && !r.place);
+    if (i < 0) { S.req.push(newReq()); i = S.req.length - 1; }
+    const r = S.req[i];
+    const n = String(it.n || it.raw), spec = String(it.spec || '');
+    const cat = REQ_BYKEY.get(rkey(n, spec)) || REQ_ITEMS.find(x => key(x.n) === key(n) && (!spec || key(x.spec) === key(spec))) || null;
+    Object.assign(r, { d: String(it.d || ''), who: String(it.who || ''), place: String(it.place || ''), n: cat ? cat.n : n, spec: cat ? cat.spec : spec,
+      u: String(it.u || (cat ? cat.u : '')), q: toQty(it.q), p: cat ? cat.p : '', v: cat ? cat.v : '', memo: String(it.memo || ''), raw: it.raw ? String(it.raw) : '' });
+    if (r.p === '') res.noPrice.push(r.n);
+    res.req++;
+  });
+  ensureReq(S); saveDraft(); renderAll();
+  return res;
+}
+function undoFill() { if (!UNDO) return false; S = JSON.parse(UNDO); UNDO = null; saveDraft(); renderAll(); return true; }
+window.BATH = {
+  applyFill, undoFill, showTab,
+  get state() { return S; },
+  lines: () => BATH_LINES.map(l => ({ no: l.no, name: l.sub ? l.name : l.name, group: l.row || '', sub: !!l.sub })),
+  catalog: () => ITEMS.filter(x => !x.mine).map(x => [x.c, x.n]),
+  reqCatalog: () => REQ_ITEMS.slice(0, 400).map(x => [x.n, x.spec, x.u]),
+};
+
 /* ───────── 탭 / 시작 ───────── */
 function showTab(t) {
   document.querySelectorAll('.b-tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
@@ -748,7 +812,7 @@ function showTab(t) {
   closeAC();
   $('#b-total-bar').classList.toggle('hidden', t === 'prices');
   if (t === 'prices') renderPrices();
-  try { history.replaceState(null, '', '#' + t); } catch (e) {}
+  try { if (!location.hash.startsWith('#fill=')) history.replaceState(null, '', '#' + t); } catch (e) {}
 }
 function renderAll() { buildReqCatalog(); renderInfo(); ['site', 'addr', 'date'].forEach(syncInfo); renderLines(); renderReq(); renderOrder(); }
 
