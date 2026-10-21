@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>욕실 자재 견적서 — 라인 인테리어</title>
-  <link rel="stylesheet" href="style.css?v=202610211800">
-  <link rel="stylesheet" href="bath.css?v=202610211800">
+  <link rel="stylesheet" href="style.css?v=202610211900">
+  <link rel="stylesheet" href="bath.css?v=202610211900">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
 <body class="b-body">
@@ -22,6 +22,7 @@
   </div>
   <nav class="b-tabs" role="tablist">
     <button role="tab" data-tab="form" class="on">📝 견적서 작성</button>
+    <button role="tab" data-tab="req">🧾 현장 요청</button>
     <button role="tab" data-tab="order">📦 자재 주문서 <span id="b-order-count" class="b-pill"></span></button>
     <button role="tab" data-tab="prices">📈 단가 이력</button>
   </nav>
@@ -54,10 +55,10 @@
         <label class="pp-tel">전화번호: <input id="i-tel" type="text" inputmode="tel"></label>
       </div>
       <table class="pp">
-        <colgroup><col class="c-no"><col class="c-nm"><col><col class="c-spec"><col class="c-q"><col class="c-p"><col class="c-memo"></colgroup>
+        <colgroup><col class="c-no"><col class="c-nm"><col class="c-place"><col><col class="c-spec"><col class="c-q"><col class="c-p"><col class="c-memo"></colgroup>
         <thead>
-          <tr><td colspan="3" class="pp-addr"><label>주소 <input id="i-addr" type="text"></label></td><th rowspan="2">규격</th><th rowspan="2">수량</th><th rowspan="2">단가</th><th rowspan="2">비고</th></tr>
-          <tr><th></th><th>품명</th><th>제품명</th></tr>
+          <tr><td colspan="4" class="pp-addr"><label>주소 <input id="i-addr" type="text"></label></td><th rowspan="2">규격</th><th rowspan="2">수량</th><th rowspan="2">단가</th><th rowspan="2">비고</th></tr>
+          <tr><th></th><th>품명</th><th>장소</th><th>제품명</th></tr>
         </thead>
         <tbody id="b-lines"></tbody>
       </table>
@@ -65,16 +66,44 @@
     </div>
   </section>
 
+  <!-- ②-1 현장 요청 -->
+  <section id="tab-req" class="b-tab hidden">
+    <div class="b-toolbar">
+      <button id="b-req-print-blank" class="b-primary">🖨 현장에 붙일 빈 양식 인쇄</button>
+      <button id="b-req-print">🖨 적은 내용 인쇄</button>
+      <button id="b-req-add">＋ 줄 5개</button>
+      <button id="b-req-clear">🧹 비우기</button>
+    </div>
+    <p class="b-hint">현장에 <b>빈 양식</b>을 붙여 두면 담당자들이 필요한 자재를 적습니다. 그 종이를 보고 여기에 같은 칸 그대로 옮겨 적으면, 품명을 고를 때 <b>업체 단가표</b>(문우드·대산·하임상사 등)와 욕실 자재 단가가 들어가고, <b>자재 주문서</b> 탭에 업체 견적서 형식으로 정리됩니다. 현장명·주소는 견적서 탭과 같이 쓰고, 💾 저장도 같이 됩니다.</p>
+    <div class="b-card b-info b-info-strip">
+      <label>현장명<input type="text" data-info="site" placeholder="부천 한신"></label>
+      <label class="b-wide2">주소<input type="text" data-info="addr"></label>
+    </div>
+    <div class="pp-paper rq-paper">
+      <div class="pp-title">현장 자재 요청서</div>
+      <table class="pp rq">
+        <colgroup><col class="c-no"><col class="c-d"><col class="c-who"><col class="c-place"><col><col class="c-spec"><col class="c-qu"><col class="c-memo"><col class="c-off"><col class="c-off2"></colgroup>
+        <thead><tr><th>No</th><th>날짜</th><th>이름</th><th>사용 장소</th><th>품명</th><th>규격</th><th>수량</th><th>비고</th><th class="rq-off">단가 🔒</th><th class="rq-off">금액 🔒</th></tr></thead>
+        <tbody id="b-req"></tbody>
+      </table>
+      <p class="b-hint" style="margin-top:8px">🔒 단가·금액은 사무실용 — 인쇄하는 종이에는 나오지 않아요. 마지막 줄을 누르면 빈 줄이 자동으로 늘어납니다.</p>
+    </div>
+  </section>
+
   <!-- ② 자재 주문서 -->
   <section id="tab-order" class="b-tab hidden">
     <div class="b-toolbar">
-      <button id="b-copy" class="b-primary">📋 엑셀에 붙여넣기용 복사</button>
+      <button id="b-copy" class="b-primary">📋 욕실 자재 복사</button>
+      <button id="b-copy-req">📋 현장 요청 복사</button>
       <button id="b-xlsx">⬇ 엑셀 파일 저장</button>
       <button id="b-print">🖨 인쇄</button>
       <span id="b-copy-msg" class="b-muted"></span>
     </div>
     <p class="b-hint">「욕실 단가 (3)」 탭과 같은 칸 순서입니다. <b>복사</b> 후 엑셀에서 붙여넣을 칸을 누르고 <kbd>Ctrl</kbd>+<kbd>V</kbd> 하세요. 세트로 고른 자재는 부속까지 풀어서 들어갑니다.</p>
+    <h3 class="b-sec">① 욕실 자재 <small>(견적서 탭 · 「욕실 단가 (3)」 형식)</small></h3>
     <div class="b-card b-order-card"><div id="b-order"></div></div>
+    <h3 class="b-sec">② 현장 요청 자재 <small>(현장 요청 탭 · 업체 견적서 형식, 부가세 별도 단가)</small></h3>
+    <div class="b-card b-order-card"><div id="b-order-req"></div></div>
   </section>
 
   <!-- ③ 단가 이력 -->
@@ -92,11 +121,13 @@
 </main>
 
 <div id="b-total-bar" class="b-total-bar">
-  <span>합계 (원가)</span><b id="b-total">0</b>
+  <span>견적서 (원가)</span><b id="b-total">0</b><span id="b-total-req" class="b-muted"></span>
   <span id="b-warn" class="b-warn"></span>
 </div>
 
 <div id="b-ac" class="b-ac hidden" role="listbox"></div>
+<datalist id="b-places"></datalist>
+<div id="print-area"></div>
 
 <div id="b-modal" class="b-modal hidden">
   <div class="b-modal-box">
@@ -105,7 +136,9 @@
   </div>
 </div>
 
-<script src="bath-data.js?v=202610211800"></script>
-<script src="bath.js?v=202610211800"></script>
+<script src="share.js?v=202610211900"></script>
+<script src="vendor-data.js?v=202610211900"></script>
+<script src="bath-data.js?v=202610211900"></script>
+<script src="bath.js?v=202610211900"></script>
 </body>
 </html>

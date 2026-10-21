@@ -3,6 +3,8 @@
  *
  *  · 견적서 줄마다 제품명을 고르면 지난 주문 단가(bath-data.js)가 들어갑니다.
  *  · 세트(BATH_SETS)는 자재 주문서에서 구성품으로 풀어 씁니다.
+ *  · 「현장 요청」 탭: 현장에 붙여 둔 종이 「현장 자재 요청서」에 담당자들이 적은 걸 옮겨 적는 곳.
+ *    업체 단가표(vendor-data.js) + 욕실 자재에서 골라 단가가 들어가고, 자재 주문서 탭에 업체 견적서 형식으로 나옵니다.
  *  · 저장한 견적과 「내 단가」(새로 넣은 단가)는 이 브라우저(localStorage)에만 저장됩니다.
  */
 (function () {
@@ -27,6 +29,7 @@ function buildCatalog() {
   ITEMS = BATH_ITEMS.map(x => Object.assign({}, x));
   BYKEY = new Map(ITEMS.map(x => [key(x.n), x]));
   Object.values(my).forEach(m => {
+    if (m.req) return;   // 현장 요청에서 배운 단가는 요청 목록에서만
     const k = key(m.n), base = BYKEY.get(k);
     if (base) { base.my = m; }
     else { const it = { n: m.n, c: m.c || '기타', p: m.p, my: m, mine: true }; ITEMS.push(it); BYKEY.set(k, it); }
@@ -48,22 +51,32 @@ function setPrice(name) {
 const isSet = n => !!BATH_SETS[n] || !!BATH_SETS[(find(n) || {}).n];
 
 /* ───────── 상태 ───────── */
-const newLine = l => ({ no: l.no, row: l.row, name: l.name, c: l.c, sub: l.sub ? 1 : 0, n: '', spec: '', q: '', p: '', memo: '', st: '' });
+const DEF_PLACE = { 1: '거실욕실', 2: '거실욕실', 3: '안방욕실', 4: '안방욕실', 5: '베란다', 6: '현관', 7: '주방' };
+const newLine = l => ({ no: l.no, row: l.row, name: l.name, c: l.c, sub: l.sub ? 1 : 0, place: l.extra ? '' : (DEF_PLACE[l.no] || ''), n: '', spec: '', q: '', p: '', memo: '', st: '' });
+const newReq = () => ({ d: '', who: '', place: '', n: '', spec: '', u: '', q: '', p: '', memo: '', v: '' });
+const REQ_MIN = 12;
+function ensureReq(st) {
+  if (!Array.isArray(st.req)) st.req = [];
+  while (st.req.length < REQ_MIN) st.req.push(newReq());
+  return st;
+}
 function blankState() {
-  return { v: 2, info: { date: today(), shop: '라인 인테리어', tel: '', addr: '', site: '', memo: '' }, lines: BATH_LINES.map(newLine) };
+  return ensureReq({ v: 2, info: { date: today(), shop: '라인 인테리어', tel: '', addr: '', site: '', memo: '' }, lines: BATH_LINES.map(newLine), req: [] });
 }
 // 예전(종이 양식 이전) 견적을 새 칸에 옮겨 담기
 function migrate(old) {
-  if (!old || old.v === 2) return old;
+  if (!old) return old;
+  if (old.v === 2) return ensureReq(old);
   const st = blankState(); Object.assign(st.info, old.info || {});
   (old.lines || []).filter(l => l.n).forEach(l => {
     const nm = String(l.name || '').replace(/^.*·\s*/, '').replace(/\s/g, '');
     const t = st.lines.find(x => !x.n && (x.name.replace(/\s/g, '') === nm || x.name.replace(/\s/g, '') === String(l.name || '').replace(/\s/g, '')))
            || st.lines.find(x => !x.n && x.c === l.c && !x.sub);
     if (t) Object.assign(t, { n: l.n, q: l.q, p: l.p, memo: l.memo || '', st: l.st || '' });
-    else st.lines.push(Object.assign(newLine({ no: 27, name: '', c: '전체' }), { extra: 1, n: l.n, q: l.q, p: l.p, memo: l.memo || '' }));
+    else st.lines.push(Object.assign(newLine({ no: 27, name: '', c: '전체', extra: 1 }), { extra: 1, n: l.n, q: l.q, p: l.p, memo: l.memo || '' }));
   });
-  return st;
+  if (Array.isArray(old.req)) st.req = old.req;
+  return ensureReq(st);
 }
 let S = migrate(store.get(LS_DRAFT, null)) || blankState();
 let curId = store.get(LS_DRAFT + '-id', null);
@@ -76,8 +89,12 @@ function renderInfo() {
   for (const [k, id] of Object.entries(INFO)) {
     const el = document.getElementById(id); if (!el) continue;
     el.value = S.info[k] || '';
-    el.oninput = () => { S.info[k] = el.value; saveDraft(); renderOrder(); };
+    el.oninput = () => { S.info[k] = el.value; saveDraft(); renderOrder(); syncInfo(k); };
   }
+}
+// 현장명·주소 등은 견적서·현장 요청 탭에서 같이 씀
+function syncInfo(k) {
+  document.querySelectorAll(`[data-info="${k}"]`).forEach(el => { if (document.activeElement !== el) el.value = S.info[k] || ''; });
 }
 const sizeOf = n => { const m = String(n || '').match(/\d{3,4}\s*[*xX×]\s*\d{3,4}(\s*[*xX]\s*\d+T?)?/g); return m ? m[m.length - 1].replace(/\s/g, '') : ''; };
 const lineLabel = l => l.sub && l.row ? `${l.row} · ${l.name}` : (l.name || '');
@@ -117,6 +134,7 @@ function lineRow(l, i, k, span) {
   return `<tr class="pp-row${l.n ? ' filled' : ''}${l.extra ? ' extra' : ''}${l.sub ? ' sub' : ''}${first ? ' grp-first' : ''}" data-row="${i}">
     ${first ? `<td class="pp-no"${span > 1 ? ` rowspan="${span}"` : ''}>${l.no}</td>` : ''}
     <td class="pp-nm">${cap}${nm}${l.extra ? '' : `<button class="pp-add" title="이 칸 아래에 줄 추가" onclick="bathAddUnder(${i})">＋</button>`}</td>
+    <td class="pp-place"><input type="text" class="in-place" data-i="${i}" value="${esc(l.place)}" list="b-places" aria-label="${esc(lineLabel(l))} 장소"></td>
     <td class="pp-prod">${nameInput(l, i, '')}<div class="meta" data-meta="${i}">${metaHtml(l, i)}</div></td>
     <td class="pp-spec"><input type="text" class="in-spec" data-i="${i}" value="${esc(l.spec)}" aria-label="규격"></td>
     <td class="pp-q"><input type="text" inputmode="decimal" class="in-q" data-i="${i}" value="${esc(l.q)}" aria-label="${esc(lineLabel(l))} 수량"></td>
@@ -176,6 +194,8 @@ function wireInput(el) {
     el.addEventListener('input', () => { l.spec = el.value; saveDraft(); });
   } else if (el.classList.contains('in-m')) {
     el.addEventListener('input', () => { l.memo = el.value; saveDraft(); renderOrder(); });
+  } else if (el.classList.contains('in-place')) {
+    el.addEventListener('input', () => { l.place = el.value; saveDraft(); renderOrder(); });
   }
 }
 function changed(i) { saveDraft(); refreshLine(i); renderOrder(); }
@@ -183,7 +203,7 @@ window.bathUsePrice = i => { const l = S.lines[i]; l.p = priceOf(find(l.n)); cha
 window.bathHistory = i => showHistory(find(S.lines[i].n));
 window.bathAddUnder = i => {
   const l = S.lines[i]; let k = i; while (k + 1 < S.lines.length && S.lines[k + 1].no === l.no && S.lines[k + 1].extra) k++;
-  S.lines.splice(k + 1, 0, Object.assign(newLine({ no: l.no, row: l.row, name: l.name, c: l.c, sub: l.sub }), { extra: 1 }));
+  S.lines.splice(k + 1, 0, Object.assign(newLine({ no: l.no, row: l.row, name: l.name, c: l.c, sub: l.sub, extra: 1 }), { extra: 1, place: l.place || '' }));
   saveDraft(); renderLines(); $(`.in-n[data-i="${k + 1}"]`)?.focus();
 };
 window.bathDel = i => { S.lines.splice(i, 1); saveDraft(); renderLines(); renderOrder(); };
@@ -191,7 +211,10 @@ window.bathDel = i => { S.lines.splice(i, 1); saveDraft(); renderLines(); render
 function renderTotals() {
   let sum = 0, miss = 0;
   S.lines.forEach(l => { const a = lineAmount(l); if (a !== '') sum += a; else if (l.n && lineStatus(l)[1] === 'bad') miss++; });
+  const rq = reqTotals();
+  miss += rq.miss;
   $('#b-total').textContent = won(sum) + '원';
+  $('#b-total-req').textContent = rq.sum ? `· 현장 요청 ${won(rq.sum)}원` : '';
   $('#b-warn').textContent = miss ? `⚠ 단가 없는 품목 ${miss}건 (합계에서 빠짐)` : '';
 }
 
@@ -221,7 +244,7 @@ function openAC(input, i) {
   const box = $('#b-ac');
   const qs = input.value.trim();
   const { same, other } = suggestions(i, qs);
-  AC.input = input; AC.i = i; AC.list = [...same, ...other]; AC.sel = 0;
+  AC.input = input; AC.i = i; AC.list = [...same, ...other]; AC.sel = 0; AC.mode = 'bath';
   const toks = qs.split(/\s+/).filter(Boolean);
   const cat = S.lines[i].c;
   const it = (x, idx) => {
@@ -249,8 +272,10 @@ function openAC(input, i) {
   if (br.right > vw - 8) box.style.left = Math.max(8, vw - br.width - 8 + window.scrollX) + 'px';
 }
 function closeAC() { $('#b-ac').classList.add('hidden'); AC.input = null; }
+const reopenAC = (input, i) => AC.mode === 'req' ? openReqAC(input, i) : openAC(input, i);
 function pickAC(k) {
   const x = AC.list[k]; if (!x) return;
+  if (AC.mode === 'req') return pickReq(x);
   const i = AC.i, l = S.lines[i], input = AC.input;
   l.n = x.n; l.p = priceOf(x); l.spec = sizeOf(x.n);
   input.value = x.n;
@@ -259,7 +284,7 @@ function pickAC(k) {
 }
 function acKey(e, input, i) {
   const box = $('#b-ac');
-  if (box.classList.contains('hidden')) { if (e.key === 'ArrowDown') openAC(input, i); return; }
+  if (box.classList.contains('hidden')) { if (e.key === 'ArrowDown') reopenAC(input, i); return; }
   const items = box.querySelectorAll('.ac-it');
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     e.preventDefault();
@@ -282,16 +307,17 @@ function orderRows() {
     if (it && BATH_SETS[it.n]) {
       BATH_SETS[it.n].forEach(([c, cq], k) => {
         const ci = find(c);
-        rows.push({ cat: it.c, label: k === 0 ? lineLabel(l) : '', n: c, q: l.q === '' ? '' : l.q * cq, p: priceOf(ci), memo: k === 0 ? l.memo : '', st: l.st });
+        rows.push({ cat: it.c, label: k === 0 ? lineLabel(l) : '', n: c, q: l.q === '' ? '' : l.q * cq, p: priceOf(ci), memo: k === 0 ? placeMemo(l) : '', st: l.st });
       });
     } else {
-      rows.push({ cat: it ? it.c : (l.c === '전체' ? '' : l.c), label: lineLabel(l), n: l.n, q: l.q, p: l.p, memo: l.memo, st: l.st });
+      rows.push({ cat: it ? it.c : (l.c === '전체' ? '' : l.c), label: lineLabel(l), n: l.n, q: l.q, p: l.p, memo: placeMemo(l), st: l.st });
     }
   });
   let run = 0;
   rows.forEach(r => { r.amt = (r.q === '' || r.p === '') ? '' : r.q * r.p; if (r.amt !== '') run += r.amt; r.run = r.amt === '' ? '' : run; });
   return { rows, total: run };
 }
+const placeMemo = l => [l.place, l.memo].filter(Boolean).join(' / ');
 function addrText() { return [S.info.addr, S.info.memo].filter(Boolean).join('\n'); }
 function renderOrder() {
   const { rows, total } = orderRows();
@@ -301,26 +327,29 @@ function renderOrder() {
       <td class="n${r.q === '' ? ' noq' : ''}">${esc(r.q)}</td><td class="n${r.p === '' ? ' miss' : ''}">${won(r.p)}</td><td class="n">${won(r.amt)}</td>
       <td>${esc(r.memo)}</td><td class="n">${won(r.run)}</td><td class="c">${esc(r.st)}</td></tr>`).join('')
     : '<tr class="empty"><td colspan="9">견적서에 제품을 넣으면 여기에 주문서가 만들어집니다</td></tr>';
+  const rq = reqOrder();
+  $('#b-order-count').textContent = (rows.length + rq.rows.length) || '';
   $('#b-order').innerHTML = `<table class="x-sheet">
     <colgroup><col style="width:9%"><col style="width:11%"><col><col style="width:5%"><col style="width:8%"><col style="width:9%"><col style="width:12%"><col style="width:9%"><col style="width:7%"></colgroup>
     <tr><td class="x-site">${esc(S.info.site || '현장명')}</td><td class="x-addr" colspan="3">${esc(addrText())}</td><td class="c"><b>합계</b></td><td class="x-sum">${won(total)}</td><td colspan="3">${esc(S.info.date || '')}${S.info.tel ? ' · ' + esc(S.info.tel) : ''}</td></tr>
-    <tr><th>구분</th><th>내용</th><th>제품명 및 사이즈</th><th>수량</th><th>원가</th><th>총 가격</th><th>비고</th><th>누계</th><th>주문상태</th></tr>
+    <tr><th>구분</th><th>내용</th><th>제품명 및 사이즈</th><th>수량</th><th>원가</th><th>총 가격</th><th>장소 / 비고</th><th>누계</th><th>주문상태</th></tr>
     ${body}
     <tr><td colspan="5" class="c"><b>합계</b></td><td class="x-sum">${won(total)}</td><td colspan="3"></td></tr>
   </table>`;
+  renderReqOrder(rq);
 }
 
 function orderTSV() {
   const { rows, total } = orderRows();
   const cell = v => String(v ?? '').replace(/\t/g, ' ').includes('\n') ? '"' + String(v).replace(/"/g, '""') + '"' : String(v ?? '');
   const out = [[S.info.site, addrText(), '', '', '합계', total].map(cell).join('\t'),
-    ['구분', '내용', '제품명 및 사이즈', '수량', '원가', '총 가격', '비고', '누계', '주문상태'].join('\t')];
+    ['구분', '내용', '제품명 및 사이즈', '수량', '원가', '총 가격', '장소 / 비고', '누계', '주문상태'].join('\t')];
   rows.forEach(r => out.push([r.cat, r.label, r.n, r.q, r.p, r.amt, r.memo, r.run, r.st].map(cell).join('\t')));
   out.push(['', '', '', '', '합계', total].join('\t'));
   return out.join('\n');
 }
-async function copyOrder() {
-  const t = orderTSV(), msg = $('#b-copy-msg');
+async function copyOrder(which) {
+  const t = which === 'req' ? reqTSV() : orderTSV(), msg = $('#b-copy-msg');
   try { await navigator.clipboard.writeText(t); msg.textContent = '✅ 복사했어요 — 엑셀에서 붙여넣으세요 (Ctrl+V)'; }
   catch (e) {
     const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
@@ -346,7 +375,7 @@ async function downloadXlsx() {
   r1.getCell(2).alignment = { vertical: 'middle', wrapText: true };
   r1.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
   r1.getCell(6).font = { bold: true }; r1.getCell(6).numFmt = '#,##0';
-  const hr = ws.addRow(['구분', '내용', '제품명 및 사이즈', '수량', '원가', '총 가격', '비고', '누계', '주문상태']);
+  const hr = ws.addRow(['구분', '내용', '제품명 및 사이즈', '수량', '원가', '총 가격', '장소 / 비고', '누계', '주문상태']);
   hr.eachCell(c => { c.font = { bold: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } }; c.border = box; c.alignment = { horizontal: 'center' }; });
   rows.forEach((r, k) => {
     const n = 3 + k;
@@ -365,32 +394,33 @@ async function downloadXlsx() {
 
   // 견적서 시트: 종이 견적서 모양 그대로
   const we = wb.addWorksheet('견적서', { pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
-  we.columns = [4.5, 17, 46, 13, 8, 11, 14].map(width => ({ width }));
+  we.columns = [4.5, 17, 11, 42, 13, 8, 11, 14].map(width => ({ width }));
   const ink = { style: 'thin', color: { argb: 'FF374151' } }, pbox = { top: ink, left: ink, bottom: ink, right: ink };
   const pen = { color: { argb: 'FF1E3A8A' }, size: 11 };
-  we.mergeCells('A1:G1'); we.getCell('A1').value = '견 적 서';
+  we.mergeCells('A1:H1'); we.getCell('A1').value = '견 적 서';
   we.getCell('A1').font = { size: 20, name: '바탕' }; we.getCell('A1').alignment = { horizontal: 'center' }; we.getRow(1).height = 34;
   we.getCell('A2').value = '일자:'; we.getCell('B2').value = S.info.date || ''; we.getCell('C2').value = '상호:  ' + (S.info.shop || '');
-  we.getCell('E2').value = '전화번호:'; we.mergeCells('F2:G2'); we.getCell('F2').value = S.info.tel || '';
-  [['B2'], ['C2'], ['F2']].forEach(([c]) => we.getCell(c).font = pen);
-  we.getCell('A3').value = '주소'; we.mergeCells('B3:C3'); we.getCell('B3').value = S.info.addr || ''; we.getCell('B3').font = pen;
-  ['규격', '수량', '단가', '비고'].forEach((t, k) => { const col = 'DEFG'[k]; we.mergeCells(`${col}3:${col}4`); const c = we.getCell(`${col}3`); c.value = t; c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = pbox; });
-  we.getCell('B4').value = '품명'; we.getCell('C4').value = '제품명';
-  ['A4', 'B4', 'C4'].forEach(c => { we.getCell(c).border = pbox; we.getCell(c).alignment = { horizontal: 'center' }; });
+  we.getCell('F2').value = '전화번호:'; we.mergeCells('G2:H2'); we.getCell('G2').value = S.info.tel || '';
+  [['B2'], ['C2'], ['G2']].forEach(([c]) => we.getCell(c).font = pen);
+  we.getCell('A3').value = '주소'; we.mergeCells('B3:D3'); we.getCell('B3').value = S.info.addr || ''; we.getCell('B3').font = pen;
+  ['규격', '수량', '단가', '비고'].forEach((t, k) => { const col = 'EFGH'[k]; we.mergeCells(`${col}3:${col}4`); const c = we.getCell(`${col}3`); c.value = t; c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = pbox; });
+  we.getCell('B4').value = '품명'; we.getCell('C4').value = '장소'; we.getCell('D4').value = '제품명';
+  ['A4', 'B4', 'C4', 'D4'].forEach(c => { we.getCell(c).border = pbox; we.getCell(c).alignment = { horizontal: 'center' }; });
   let r = 5;
   for (let i = 0; i < S.lines.length; ) {
     let j = i; while (j + 1 < S.lines.length && S.lines[j + 1].no === S.lines[i].no) j++;
     for (let k = i; k <= j; k++) {
       const l = S.lines[k], row = we.getRow(r + k - i), p = l.n ? linePrice(l) : '';
       const nm = l.extra ? '' : (l.sub ? l.name + '/' : l.name);
-      row.values = [k === i ? l.no : null, nm, l.n || '', l.spec || '', l.q === '' ? null : l.q, p === '' ? null : p, l.memo || ''];
-      [3, 4, 5, 6, 7].forEach(c => row.getCell(c).font = pen);
-      row.getCell(6).numFmt = '#,##0'; row.height = 20;
-      for (let c = 1; c <= 7; c++) { const cell = row.getCell(c); cell.border = pbox; if (c <= 2) cell.alignment = { horizontal: 'center', vertical: 'middle' }; }
+      row.values = [k === i ? l.no : null, nm, l.place || '', l.n || '', l.spec || '', l.q === '' ? null : l.q, p === '' ? null : p, l.memo || ''];
+      [3, 4, 5, 6, 7, 8].forEach(c => row.getCell(c).font = pen);
+      row.getCell(7).numFmt = '#,##0'; row.height = 20;
+      for (let c = 1; c <= 8; c++) { const cell = row.getCell(c); cell.border = pbox; if (c <= 2) cell.alignment = { horizontal: 'center', vertical: 'middle' }; }
     }
     if (j > i) we.mergeCells(`A${r}:A${r + j - i}`);
     r += j - i + 1; i = j + 1;
   }
+  addReqSheets(wb);
   const buf = await wb.xlsx.writeBuffer();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
@@ -437,7 +467,7 @@ $('#b-modal').addEventListener('click', e => { if (e.target.id === 'b-modal') cl
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 window.bathForgetMy = k => {
   const my = store.get(LS_MY, {}); delete my[k]; store.set(LS_MY, my);
-  buildCatalog(); closeModal(); renderLines(); renderOrder(); renderPrices();
+  buildCatalog(); buildReqCatalog(); closeModal(); renderLines(); renderReq(); renderOrder(); renderPrices();
 };
 
 /* ───────── 저장 / 불러오기 / 백업 ───────── */
@@ -452,6 +482,13 @@ function learnPrices() {
     my[key(l.n)] = { n: it ? it.n : l.n, c: it ? it.c : (l.c === '전체' ? '기타' : l.c), p: l.p, s: S.info.site, d: S.info.date };
     n++;
   });
+  S.req.forEach(r => {
+    if (!r.n || r.p === '') return;
+    const it = findReq(r);
+    if (it && Number(it.p) === Number(r.p)) return;
+    my[key(r.n + ' ' + (r.spec || ''))] = { n: r.n, spec: r.spec || '', u: r.u || '', c: '현장 요청', p: r.p, s: S.info.site, d: S.info.date, req: 1 };
+    n++;
+  });
   store.set(LS_MY, my);
   return n;
 }
@@ -463,7 +500,7 @@ function saveQuote() {
   if (k >= 0) list[k] = rec; else list.unshift(rec);
   const ok = store.set(LS_QUOTES, list);
   const learned = learnPrices();
-  buildCatalog(); saveDraft(); renderLines();
+  buildCatalog(); buildReqCatalog(); saveDraft(); renderLines(); renderReq();
   $('#b-saved-at').textContent = ok ? `저장됨 ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}${learned ? ` · 새 단가 ${learned}개를 「내 단가」로 기억` : ''}` : '저장 실패 (브라우저 저장 공간이 막혀 있어요)';
 }
 function openLoad() {
@@ -507,16 +544,217 @@ function restore(file) {
   fr.readAsText(file);
 }
 
+
+/* ═════════ 현장 요청 (현장에 붙여 둔 종이 → 웹으로 옮겨 적기 → 업체 견적서 형식 발주) ═════════ */
+const PLACES = ['거실욕실', '안방욕실', '거실', '안방', '작은방', '주방', '현관', '베란다', '세탁실', '다용도실', '드레스룸', '복도', '천장', '전체'];
+let REQ_ITEMS = [], REQ_BYKEY = new Map();
+const rkey = (n, spec) => key(n + ' ' + (spec || ''));
+function buildReqCatalog() {
+  const list = [];
+  (typeof VENDOR_PRICES !== 'undefined' ? VENDOR_PRICES : []).forEach(x => {
+    if (!x.n || x.p == null) return;
+    const p = x.vat === '포함' ? Math.round(x.p / 1.1) : x.p;   // 업체 견적서처럼 공급가(부가세 별도)로
+    list.push({ n: x.n, spec: x.spec || '', u: x.u || '', p, c: x.cat, v: x.vendor || x.sub || '', d: x.date || '', note: x.note || '' });
+  });
+  ITEMS.forEach(x => { if (!x.mine && !BATH_SETS[x.n]) list.push({ n: x.n, spec: sizeOf(x.n), u: '', p: priceOf(x), c: '욕실 · ' + x.c, v: x.s ? '지난 주문 ' + x.s : '욕실 단가', d: '' }); });
+  Object.values(store.get(LS_MY, {})).forEach(m => { if (m.req) list.push({ n: m.n, spec: m.spec || '', u: m.u || '', p: m.p, c: '내 단가', v: m.s || '', d: m.d || '', mine: 1 }); });
+  // 같은 품명·규격은 최근 것 하나만 (내 단가 > 날짜 최근)
+  const by = new Map();
+  list.forEach(x => {
+    const k = rkey(x.n, x.spec), o = by.get(k);
+    if (!o || x.mine || (!o.mine && String(x.d) > String(o.d))) by.set(k, x);
+  });
+  REQ_ITEMS = [...by.values()].sort((a, b) => (b.mine || 0) - (a.mine || 0) || String(b.d).localeCompare(String(a.d)));
+  REQ_BYKEY = by;
+}
+const findReq = r => REQ_BYKEY.get(rkey(r.n, r.spec)) || null;
+const reqAmt = r => (r.n && r.q !== '' && r.p !== '') ? r.q * r.p : '';
+function reqTotals() {
+  let sum = 0, miss = 0;
+  (S.req || []).forEach(r => { const a = reqAmt(r); if (a !== '') sum += a; else if (r.n && r.p === '') miss++; });
+  return { sum, miss };
+}
+
+function renderReq() {
+  const host = $('#b-req'); if (!host) return;
+  host.innerHTML = S.req.map((r, i) => `<tr class="rq-row${r.n ? ' filled' : ''}" data-r="${i}">
+    <td class="rq-no">${i + 1}</td>
+    <td><input type="text" class="rq-d" data-r="${i}" value="${esc(r.d)}" placeholder="${i === 0 ? '1/6' : ''}" aria-label="${i + 1}번 날짜"></td>
+    <td><input type="text" class="rq-who" data-r="${i}" value="${esc(r.who)}" aria-label="${i + 1}번 이름"></td>
+    <td><input type="text" class="rq-place" data-r="${i}" value="${esc(r.place)}" list="b-places" aria-label="${i + 1}번 사용 장소"></td>
+    <td class="rq-prod"><input type="text" class="rq-n" data-r="${i}" value="${esc(r.n)}" autocomplete="off" aria-label="${i + 1}번 품명"><div class="meta" data-rmeta="${i}"></div></td>
+    <td><input type="text" class="rq-spec" data-r="${i}" value="${esc(r.spec)}" aria-label="${i + 1}번 규격"></td>
+    <td class="rq-qu"><input type="text" inputmode="decimal" class="rq-q" data-r="${i}" value="${esc(r.q)}" aria-label="${i + 1}번 수량"><input type="text" class="rq-u" data-r="${i}" value="${esc(r.u)}" placeholder="${r.n ? '단위' : ''}" aria-label="${i + 1}번 단위"></td>
+    <td><input type="text" class="rq-memo" data-r="${i}" value="${esc(r.memo)}" aria-label="${i + 1}번 비고"></td>
+    <td class="rq-off"><input type="text" inputmode="numeric" class="rq-p" data-r="${i}" value="${won(r.p)}" aria-label="${i + 1}번 단가"></td>
+    <td class="rq-off rq-amt" data-ramt="${i}">${won(reqAmt(r))}</td>
+  </tr>`).join('');
+  host.querySelectorAll('input[data-r]').forEach(wireReq);
+  S.req.forEach((r, i) => refreshReq(i));
+}
+function refreshReq(i) {
+  const r = S.req[i]; if (!r) return;
+  const row = $(`.rq-row[data-r="${i}"]`); if (row) row.classList.toggle('filled', !!r.n);
+  const it = r.n ? findReq(r) : null;
+  const m = $(`[data-rmeta="${i}"]`);
+  if (m) m.innerHTML = !r.n ? '' : it ? `<span>${esc(it.v)}${it.d ? ' · ' + esc(it.d) : ''}${it.note ? ' · ' + esc(it.note) : ''}</span>` : '<span class="m-new">목록에 없음 — 단가 넣으면 「내 단가」로 기억</span>';
+  const pe = $(`.rq-p[data-r="${i}"]`); if (pe) { if (document.activeElement !== pe) pe.value = won(r.p); pe.classList.toggle('noprice', !!(r.n && r.p === '')); }
+  ['spec', 'u'].forEach(f => { const el = $(`.rq-${f}[data-r="${i}"]`); if (el && document.activeElement !== el) el.value = r[f] || ''; });
+  const a = $(`[data-ramt="${i}"]`); if (a) a.textContent = won(reqAmt(r));
+}
+function reqChanged(i) { saveDraft(); refreshReq(i); renderTotals(); renderOrder(); }
+function wireReq(el) {
+  const i = Number(el.dataset.r), r = S.req[i];
+  const f = [...el.classList].find(c => c.startsWith('rq-')).slice(3);
+  if (f === 'n') {
+    el.addEventListener('focus', () => openReqAC(el, i));
+    el.addEventListener('input', () => {
+      const was = findReq(r); r.n = el.value;
+      const it = REQ_ITEMS.find(x => key(x.n) === key(r.n) && (!r.spec || key(x.spec) === key(r.spec)));
+      if (it) { r.spec = it.spec; r.u = it.u; r.p = it.p; r.v = it.v; } else if (was) { r.p = ''; r.v = ''; }
+      reqChanged(i); openReqAC(el, i);
+    });
+    el.addEventListener('keydown', e => acKey(e, el, i));
+    el.addEventListener('blur', () => setTimeout(() => { if (AC.input === el) closeAC(); }, 160));
+    return;
+  }
+  el.addEventListener('input', () => {
+    r[f] = (f === 'q' || f === 'p') ? parseNum(el.value) : el.value;
+    if (f === 'spec') { const it = findReq(r); if (it) { r.p = it.p; r.u = r.u || it.u; } }
+    reqChanged(i);
+  });
+  if (f === 'p') el.addEventListener('blur', () => el.value = won(r.p));
+  // 마지막 줄에 쓰기 시작하면 빈 줄 자동 추가
+  el.addEventListener('focus', () => { if (i >= S.req.length - 2) { for (let k = 0; k < 5; k++) S.req.push(newReq()); saveDraft(); const a = document.activeElement; renderReq(); $(`.${a.className.split(' ')[0]}[data-r="${i}"]`)?.focus(); } }, { once: true });
+}
+function openReqAC(input, i) {
+  const box = $('#b-ac');
+  const qs = input.value.trim(), toks = qs.split(/\s+/).map(key).filter(Boolean);
+  const list = REQ_ITEMS.filter(x => { const k = key(x.n + x.spec + x.c); return toks.every(t => k.includes(t)); }).slice(0, toks.length ? 60 : 40);
+  AC.input = input; AC.i = i; AC.list = list; AC.sel = 0; AC.mode = 'req';
+  const raw = qs.split(/\s+/).filter(Boolean);
+  box.innerHTML = list.length ? `<div class="ac-sec">${toks.length ? '찾은 자재' : '최근 업체 단가'} (${list.length})</div>` + list.map((x, k) => `<div class="ac-it${k === 0 ? ' on' : ''}" data-k="${k}" role="option">
+      <span class="ac-n">${x.mine ? '<span class="tag my">내 단가</span>' : ''}<span class="tag">${esc(x.c)}</span>${hl(x.n, raw)}${x.spec ? ` <small>${hl(x.spec, raw)}</small>` : ''}</span>
+      <span class="ac-p">${won(x.p)}${x.u ? `<small>/${esc(x.u)}</small>` : ''}</span>
+      <span class="ac-s">${esc(x.v)}</span><span class="ac-s r">${esc(x.d)}</span></div>`).join('')
+    : `<div class="ac-empty">「${esc(qs)}」 — 단가표에 없어요. 그대로 쓰고 단가를 넣으세요.</div>`;
+  const rc = input.getBoundingClientRect();
+  box.style.left = (rc.left + window.scrollX) + 'px'; box.style.top = (rc.bottom + window.scrollY + 2) + 'px';
+  box.style.width = Math.max(rc.width, 460) + 'px';
+  box.classList.remove('hidden');
+  box.onmousedown = e => e.preventDefault();
+  box.querySelectorAll('.ac-it').forEach(el => el.onclick = () => pickAC(Number(el.dataset.k)));
+  const vw = document.documentElement.clientWidth, br = box.getBoundingClientRect();
+  if (br.right > vw - 8) box.style.left = Math.max(8, vw - br.width - 8 + window.scrollX) + 'px';
+}
+function pickReq(x) {
+  const i = AC.i, r = S.req[i], input = AC.input;
+  Object.assign(r, { n: x.n, spec: x.spec, u: x.u, p: x.p, v: x.v });
+  input.value = x.n; closeAC(); reqChanged(i);
+  $(`.rq-q[data-r="${i}"]`)?.focus();
+}
+
+// 자재 주문서 탭: 업체 견적서 형식 (No · 품명 · 규격 · 단위 · 수량 · 단가 · 금액 · 부가세 · 적요)
+function reqOrder() {
+  const rows = (S.req || []).filter(r => r.n && r.q !== 0).map(r => {
+    const amt = reqAmt(r);
+    const note = [r.place, r.who, r.d, r.memo].filter(Boolean).join(' · ');
+    return { n: r.n, spec: r.spec, u: r.u, q: r.q, p: r.p, amt, vat: amt === '' ? '' : Math.round(amt * 0.1), note, v: r.v };
+  });
+  const sum = rows.reduce((a, r) => a + (r.amt || 0), 0);
+  return { rows, sum, vat: Math.round(sum * 0.1), total: sum + Math.round(sum * 0.1) };
+}
+function renderReqOrder(rq) {
+  const host = $('#b-order-req'); if (!host) return;
+  host.innerHTML = `<table class="x-sheet x-quote">
+    <colgroup><col style="width:4%"><col style="width:24%"><col style="width:14%"><col style="width:5%"><col style="width:6%"><col style="width:9%"><col style="width:10%"><col style="width:8%"><col></colgroup>
+    <tr><td colspan="3" class="x-q-to"><b>${esc(S.info.site || '현장명')}</b> 현장 자재 <small>${esc(S.info.date || '')}</small></td>
+        <td colspan="3" class="c">합계금액 <small>(부가세 포함)</small></td><td colspan="3" class="x-sum">${won(rq.total)}원</td></tr>
+    <tr><th>No.</th><th>품명</th><th>규격</th><th>단위</th><th>수량</th><th>단가</th><th>금액</th><th>부가세</th><th>적요 (장소 · 요청자 · 날짜)</th></tr>
+    ${rq.rows.length ? rq.rows.map((r, k) => `<tr><td class="c">${k + 1}</td><td class="prod">${esc(r.n)}</td><td>${esc(r.spec)}</td><td class="c">${esc(r.u)}</td>
+      <td class="n${r.q === '' ? ' noq' : ''}">${esc(r.q)}</td><td class="n${r.p === '' ? ' miss' : ''}">${won(r.p)}</td><td class="n">${won(r.amt)}</td><td class="n">${won(r.vat)}</td><td>${esc(r.note)}</td></tr>`).join('')
+      : '<tr class="empty"><td colspan="9">「현장 요청」 탭에 적은 자재가 여기에 업체 견적서 형식으로 정리됩니다</td></tr>'}
+    <tr><td colspan="6" class="c"><b>공급가 합계</b></td><td class="n"><b>${won(rq.sum)}</b></td><td class="n"><b>${won(rq.vat)}</b></td><td class="x-sum">합계 ${won(rq.total)}</td></tr>
+  </table>`;
+}
+function reqTSV() {
+  const rq = reqOrder();
+  const cell = v => String(v ?? '').replace(/[\t\n]/g, ' ');
+  const out = [[`${S.info.site || ''} 현장 자재`, '', '', '', '', '합계금액', rq.total].join('\t'), ['No.', '품명', '규격', '단위', '수량', '단가', '금액', '부가세', '적요'].join('\t')];
+  rq.rows.forEach((r, k) => out.push([k + 1, r.n, r.spec, r.u, r.q, r.p, r.amt, r.vat, r.note].map(cell).join('\t')));
+  out.push(['', '', '', '', '', '공급가 합계', rq.sum, rq.vat, '합계 ' + rq.total].join('\t'));
+  return out.join('\n');
+}
+function addReqSheets(wb) {
+  const rq = reqOrder(); if (!rq.rows.length) return;
+  const thin = { style: 'thin', color: { argb: 'FF999999' } }, box = { top: thin, left: thin, bottom: thin, right: thin };
+  const ws = wb.addWorksheet('현장요청 발주', { pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+  ws.columns = [5, 30, 18, 6, 7, 11, 12, 10, 30].map(width => ({ width }));
+  ws.mergeCells('A1:I1'); ws.getCell('A1').value = '견 적 서 (현장 요청 자재)'; ws.getCell('A1').font = { size: 18, bold: true }; ws.getCell('A1').alignment = { horizontal: 'center' };
+  ws.getCell('A2').value = `${S.info.shop || ''} · 현장: ${S.info.site || ''} · ${S.info.addr || ''}`; ws.mergeCells('A2:F2');
+  ws.getCell('G2').value = '합계금액'; ws.mergeCells('H2:I2'); ws.getCell('H2').value = rq.total; ws.getCell('H2').numFmt = '#,##0"원"'; ws.getCell('H2').font = { bold: true, size: 13 };
+  const hr = ws.addRow(['No.', '품명', '규격', '단위', '수량', '단가', '금액', '부가세', '적요']);
+  hr.eachCell(c => { c.font = { bold: true }; c.border = box; c.alignment = { horizontal: 'center' }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } }; });
+  rq.rows.forEach((r, k) => {
+    const n = 4 + k;
+    const row = ws.addRow([k + 1, r.n, r.spec, r.u, r.q === '' ? null : r.q, r.p === '' ? null : r.p,
+      { formula: `IF(OR(E${n}="",F${n}=""),"",E${n}*F${n})`, result: r.amt === '' ? '' : r.amt }, { formula: `IF(G${n}="","",ROUND(G${n}*0.1,0))`, result: r.vat === '' ? '' : r.vat }, r.note]);
+    row.eachCell({ includeEmpty: true }, (c, j) => { c.border = box; if ([5, 6, 7, 8].includes(j)) c.numFmt = '#,##0'; });
+  });
+  const last = 3 + rq.rows.length;
+  const tr = ws.addRow(['', '', '', '', '', '공급가', { formula: `SUM(G4:G${last})`, result: rq.sum }, { formula: `SUM(H4:H${last})`, result: rq.vat }, '']);
+  [7, 8].forEach(j => { tr.getCell(j).numFmt = '#,##0'; tr.getCell(j).font = { bold: true }; });
+  ws.getCell('H2').value = { formula: `G${last + 1}+H${last + 1}`, result: rq.total };
+
+  // 현장 자재 요청서 (종이 양식에 적힌 그대로)
+  const wq = wb.addWorksheet('현장 자재 요청서');
+  wq.columns = [5, 9, 10, 12, 30, 16, 8, 6, 22].map(width => ({ width }));
+  wq.addRow([`현장 자재 요청서 — ${S.info.site || ''}`]).font = { size: 14, bold: true };
+  const h2 = wq.addRow(['No', '날짜', '이름', '사용 장소', '품명', '규격', '수량', '단위', '비고']);
+  h2.eachCell(c => { c.font = { bold: true }; c.border = box; });
+  S.req.filter(r => r.n || r.who || r.place).forEach((r, k) => {
+    const row = wq.addRow([k + 1, r.d, r.who, r.place, r.n, r.spec, r.q === '' ? null : r.q, r.u, r.memo]);
+    row.eachCell({ includeEmpty: true }, c => c.border = box);
+  });
+}
+
+// 현장에 붙일 종이 (빈 양식 / 적은 내용)
+function printReq(blank) {
+  const rows = blank ? [] : S.req.filter(r => r.n || r.who || r.place || r.q !== '');
+  const N = Math.max(22, rows.length);
+  const tel = typeof COMPANY !== 'undefined' ? `${COMPANY.name} ${COMPANY.tel}` : '';
+  const body = Array.from({ length: N }, (_, k) => {
+    const r = rows[k] || {};
+    return `<tr><td class="c">${k + 1}</td><td>${esc(r.d || '')}</td><td>${esc(r.who || '')}</td><td>${esc(r.place || '')}</td><td>${esc(r.n || '')}</td><td>${esc(r.spec || '')}</td><td class="c">${esc(r.q ?? '')} ${esc(r.u || '')}</td><td>${esc(r.memo || '')}</td><td></td></tr>`;
+  }).join('');
+  $('#print-area').innerHTML = `<div class="pr-sheet">
+    <div class="pr-title">현장 자재 요청서</div>
+    <div class="pr-head"><span>현장: <b>${esc(S.info.site || '')}</b>${S.info.addr ? ' · ' + esc(S.info.addr) : ''}</span><span>${esc(tel)}</span></div>
+    <div class="pr-guide">필요한 자재를 아래에 적어주세요 — <b>날짜 · 이름 · 사용 장소(안방 / 거실욕실 / 주방 …) · 품명 · 규격 · 수량</b>. 사무실에서 확인하고 주문합니다.</div>
+    <table class="pr-table">
+      <colgroup><col style="width:5%"><col style="width:8%"><col style="width:9%"><col style="width:11%"><col style="width:24%"><col style="width:15%"><col style="width:9%"><col style="width:13%"><col style="width:6%"></colgroup>
+      <tr><th>No</th><th>날짜</th><th>이름</th><th>사용 장소</th><th>품명</th><th>규격</th><th>수량</th><th>비고</th><th>주문<br>✔</th></tr>
+      <tr class="pr-ex"><td class="c">예</td><td>1/6</td><td>김○○</td><td>안방</td><td>MDF</td><td>12T</td><td class="c">7장</td><td>2:8 절단</td><td></td></tr>
+      ${body}
+    </table>
+    <div class="pr-foot">자주 쓰는 자재: 타카핀(ST64 · ST32 · DT64 · 422 · F30) · 205본드 · 실리콘 · 폼본드 · MDF(9T · 12T) · 합판(8.5T · 11.5T) · 다루끼 · 나나부 · 투바이 · 석고보드(일반 · 방수) · 평6전 · 마이너스몰딩 · 천장몰딩 · 걸레받이</div>
+  </div>`;
+  document.body.classList.add('print-req');
+  const done = () => { document.body.classList.remove('print-req'); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  setTimeout(() => { window.print(); setTimeout(done, 500); }, 50);
+}
+
 /* ───────── 탭 / 시작 ───────── */
 function showTab(t) {
   document.querySelectorAll('.b-tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
-  ['form', 'order', 'prices'].forEach(x => $('#tab-' + x).classList.toggle('hidden', x !== t));
+  ['form', 'req', 'order', 'prices'].forEach(x => $('#tab-' + x).classList.toggle('hidden', x !== t));
   closeAC();
   $('#b-total-bar').classList.toggle('hidden', t === 'prices');
   if (t === 'prices') renderPrices();
   try { history.replaceState(null, '', '#' + t); } catch (e) {}
 }
-function renderAll() { renderInfo(); renderLines(); renderOrder(); }
+function renderAll() { buildReqCatalog(); renderInfo(); ['site', 'addr', 'date'].forEach(syncInfo); renderLines(); renderReq(); renderOrder(); }
 
 buildCatalog();
 // 저장된 견적이 예전 줄 구성이면 빠진 줄을 채움
@@ -526,7 +764,14 @@ $('#b-addline').onclick = () => { const i27 = S.lines.map(l => l.no).lastIndexOf
 $('#b-save').onclick = saveQuote;
 $('#b-load').onclick = openLoad;
 $('#b-new').onclick = newQuote;
-$('#b-copy').onclick = copyOrder;
+$('#b-copy').onclick = () => copyOrder('bath');
+$('#b-copy-req').onclick = () => copyOrder('req');
+$('#b-req-print-blank').onclick = () => printReq(true);
+$('#b-req-print').onclick = () => printReq(false);
+$('#b-req-add').onclick = () => { for (let k = 0; k < 5; k++) S.req.push(newReq()); saveDraft(); renderReq(); };
+$('#b-req-clear').onclick = () => { if (!S.req.some(r => r.n) || confirm('현장 요청 내용을 모두 지울까요?')) { S.req = []; ensureReq(S); saveDraft(); renderReq(); renderTotals(); renderOrder(); } };
+document.querySelectorAll('[data-info]').forEach(el => { el.addEventListener('input', () => { S.info[el.dataset.info] = el.value; saveDraft(); renderOrder(); const main = document.getElementById(INFO[el.dataset.info]); if (main) main.value = el.value; syncInfo(el.dataset.info); }); });
+$('#b-places').innerHTML = PLACES.map(p => `<option value="${p}">`).join('');
 $('#b-xlsx').onclick = downloadXlsx;
 $('#b-print').onclick = () => { showTab('order'); setTimeout(() => window.print(), 50); };
 $('#b-backup').onclick = backup;
@@ -539,5 +784,5 @@ catSel.onchange = () => { pLimit = 120; renderPrices(); };
 $('#p-total').textContent = `${BATH_ITEMS.reduce((s, x) => s + (x.h ? x.h.length : 0), 0)}건 (자재 ${BATH_ITEMS.filter(x => x.h).length}종)`;
 renderAll();
 const start = (location.hash || '').slice(1);
-showTab(['form', 'order', 'prices'].includes(start) ? start : 'form');
+showTab(['form', 'req', 'order', 'prices'].includes(start) ? start : 'form');
 })();
