@@ -51,8 +51,7 @@ function setPrice(name) {
 const isSet = n => !!BATH_SETS[n] || !!BATH_SETS[(find(n) || {}).n];
 
 /* ───────── 상태 ───────── */
-const DEF_PLACE = { 1: '거실욕실', 2: '거실욕실', 3: '안방욕실', 4: '안방욕실', 5: '베란다', 6: '현관', 7: '주방' };
-const newLine = l => ({ no: l.no, row: l.row, name: l.name, c: l.c, sub: l.sub ? 1 : 0, place: l.extra ? '' : (DEF_PLACE[l.no] || ''), n: '', spec: '', q: '', p: '', memo: '', st: '' });
+const newLine = l => ({ no: l.no, row: l.row, name: l.name, c: l.c, sub: l.sub ? 1 : 0, n: '', spec: '', q: '', p: '', memo: '', st: '' });
 const newReq = () => ({ d: '', who: '', place: '', n: '', spec: '', u: '', q: '', p: '', memo: '', v: '' });
 const REQ_MIN = 12;
 function ensureReq(st) {
@@ -134,7 +133,6 @@ function lineRow(l, i, k, span) {
   return `<tr class="pp-row${l.n ? ' filled' : ''}${l.extra ? ' extra' : ''}${l.sub ? ' sub' : ''}${first ? ' grp-first' : ''}" data-row="${i}">
     ${first ? `<td class="pp-no"${span > 1 ? ` rowspan="${span}"` : ''}>${l.no}</td>` : ''}
     <td class="pp-nm">${cap}${nm}${l.extra ? '' : `<button class="pp-add" title="이 칸 아래에 줄 추가" onclick="bathAddUnder(${i})">＋</button>`}</td>
-    <td class="pp-place"><input type="text" class="in-place" data-i="${i}" value="${esc(l.place)}" list="b-places" aria-label="${esc(lineLabel(l))} 장소"></td>
     <td class="pp-prod">${nameInput(l, i, '')}<div class="meta" data-meta="${i}">${metaHtml(l, i)}</div></td>
     <td class="pp-spec"><input type="text" class="in-spec" data-i="${i}" value="${esc(l.spec)}" aria-label="규격"></td>
     <td class="pp-q"><input type="text" inputmode="decimal" class="in-q" data-i="${i}" value="${esc(l.q)}" aria-label="${esc(lineLabel(l))} 수량"></td>
@@ -194,8 +192,6 @@ function wireInput(el) {
     el.addEventListener('input', () => { l.spec = el.value; saveDraft(); });
   } else if (el.classList.contains('in-m')) {
     el.addEventListener('input', () => { l.memo = el.value; saveDraft(); renderOrder(); });
-  } else if (el.classList.contains('in-place')) {
-    el.addEventListener('input', () => { l.place = el.value; saveDraft(); renderOrder(); });
   }
 }
 function changed(i) { saveDraft(); refreshLine(i); renderOrder(); }
@@ -203,7 +199,7 @@ window.bathUsePrice = i => { const l = S.lines[i]; l.p = priceOf(find(l.n)); cha
 window.bathHistory = i => showHistory(find(S.lines[i].n));
 window.bathAddUnder = i => {
   const l = S.lines[i]; let k = i; while (k + 1 < S.lines.length && S.lines[k + 1].no === l.no && S.lines[k + 1].extra) k++;
-  S.lines.splice(k + 1, 0, Object.assign(newLine({ no: l.no, row: l.row, name: l.name, c: l.c, sub: l.sub, extra: 1 }), { extra: 1, place: l.place || '' }));
+  S.lines.splice(k + 1, 0, Object.assign(newLine({ no: l.no, row: l.row, name: l.name, c: l.c, sub: l.sub, extra: 1 }), { extra: 1 }));
   saveDraft(); renderLines(); $(`.in-n[data-i="${k + 1}"]`)?.focus();
 };
 window.bathDel = i => { S.lines.splice(i, 1); saveDraft(); renderLines(); renderOrder(); };
@@ -317,7 +313,7 @@ function orderRows() {
   rows.forEach(r => { r.amt = (r.q === '' || r.p === '') ? '' : r.q * r.p; if (r.amt !== '') run += r.amt; r.run = r.amt === '' ? '' : run; });
   return { rows, total: run };
 }
-const placeMemo = l => [l.place, l.memo].filter(Boolean).join(' / ');
+const placeMemo = l => l.memo || '';
 function addrText() { return [S.info.addr, S.info.memo].filter(Boolean).join('\n'); }
 function renderOrder() {
   const { rows, total } = orderRows();
@@ -332,7 +328,7 @@ function renderOrder() {
   $('#b-order').innerHTML = `<table class="x-sheet">
     <colgroup><col style="width:9%"><col style="width:11%"><col><col style="width:5%"><col style="width:8%"><col style="width:9%"><col style="width:12%"><col style="width:9%"><col style="width:7%"></colgroup>
     <tr><td class="x-site">${esc(S.info.site || '현장명')}</td><td class="x-addr" colspan="3">${esc(addrText())}</td><td class="c"><b>합계</b></td><td class="x-sum">${won(total)}</td><td colspan="3">${esc(S.info.date || '')}${S.info.tel ? ' · ' + esc(S.info.tel) : ''}</td></tr>
-    <tr><th>구분</th><th>내용</th><th>제품명 및 사이즈</th><th>수량</th><th>원가</th><th>총 가격</th><th>장소 / 비고</th><th>누계</th><th>주문상태</th></tr>
+    <tr><th>구분</th><th>내용</th><th>제품명 및 사이즈</th><th>수량</th><th>원가</th><th>총 가격</th><th>비고</th><th>누계</th><th>주문상태</th></tr>
     ${body}
     <tr><td colspan="5" class="c"><b>합계</b></td><td class="x-sum">${won(total)}</td><td colspan="3"></td></tr>
   </table>`;
@@ -343,7 +339,7 @@ function orderTSV() {
   const { rows, total } = orderRows();
   const cell = v => String(v ?? '').replace(/\t/g, ' ').includes('\n') ? '"' + String(v).replace(/"/g, '""') + '"' : String(v ?? '');
   const out = [[S.info.site, addrText(), '', '', '합계', total].map(cell).join('\t'),
-    ['구분', '내용', '제품명 및 사이즈', '수량', '원가', '총 가격', '장소 / 비고', '누계', '주문상태'].join('\t')];
+    ['구분', '내용', '제품명 및 사이즈', '수량', '원가', '총 가격', '비고', '누계', '주문상태'].join('\t')];
   rows.forEach(r => out.push([r.cat, r.label, r.n, r.q, r.p, r.amt, r.memo, r.run, r.st].map(cell).join('\t')));
   out.push(['', '', '', '', '합계', total].join('\t'));
   return out.join('\n');
@@ -375,7 +371,7 @@ async function downloadXlsx() {
   r1.getCell(2).alignment = { vertical: 'middle', wrapText: true };
   r1.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
   r1.getCell(6).font = { bold: true }; r1.getCell(6).numFmt = '#,##0';
-  const hr = ws.addRow(['구분', '내용', '제품명 및 사이즈', '수량', '원가', '총 가격', '장소 / 비고', '누계', '주문상태']);
+  const hr = ws.addRow(['구분', '내용', '제품명 및 사이즈', '수량', '원가', '총 가격', '비고', '누계', '주문상태']);
   hr.eachCell(c => { c.font = { bold: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } }; c.border = box; c.alignment = { horizontal: 'center' }; });
   rows.forEach((r, k) => {
     const n = 3 + k;
@@ -394,17 +390,17 @@ async function downloadXlsx() {
 
   // 견적서 시트: 종이 견적서 모양 그대로
   const we = wb.addWorksheet('견적서', { pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
-  we.columns = [4.5, 17, 11, 42, 13, 8, 11, 14].map(width => ({ width }));
+  we.columns = [4.5, 17, 50, 13, 8, 11, 14].map(width => ({ width }));
   const ink = { style: 'thin', color: { argb: 'FF374151' } }, pbox = { top: ink, left: ink, bottom: ink, right: ink };
   const pen = { color: { argb: 'FF1E3A8A' }, size: 11 };
-  we.mergeCells('A1:H1'); we.getCell('A1').value = '견 적 서';
+  we.mergeCells('A1:G1'); we.getCell('A1').value = '견 적 서';
   we.getCell('A1').font = { size: 20, name: '바탕' }; we.getCell('A1').alignment = { horizontal: 'center' }; we.getRow(1).height = 34;
   we.getCell('A2').value = '일자:'; we.getCell('B2').value = S.info.date || ''; we.getCell('C2').value = '상호:  ' + (S.info.shop || '');
-  we.getCell('F2').value = '전화번호:'; we.mergeCells('G2:H2'); we.getCell('G2').value = S.info.tel || '';
-  [['B2'], ['C2'], ['G2']].forEach(([c]) => we.getCell(c).font = pen);
-  we.getCell('A3').value = '주소:'; we.mergeCells('B3:H3'); we.getCell('B3').value = S.info.addr || ''; we.getCell('B3').font = pen;
+  we.getCell('E2').value = '전화번호:'; we.mergeCells('F2:G2'); we.getCell('F2').value = S.info.tel || '';
+  [['B2'], ['C2'], ['F2']].forEach(([c]) => we.getCell(c).font = pen);
+  we.getCell('A3').value = '주소:'; we.mergeCells('B3:G3'); we.getCell('B3').value = S.info.addr || ''; we.getCell('B3').font = pen;
   [2, 3].forEach(n => we.getRow(n).height = 22);
-  const hd = we.getRow(4); hd.values = ['No', '품명', '장소', '제품명', '규격', '수량', '단가', '비고']; hd.height = 24;
+  const hd = we.getRow(4); hd.values = ['No', '품명', '제품명', '규격', '수량', '단가', '비고']; hd.height = 24;
   hd.eachCell(c => { c.border = pbox; c.alignment = { horizontal: 'center', vertical: 'middle' }; });
   let r = 5;
   for (let i = 0; i < S.lines.length; ) {
@@ -412,10 +408,10 @@ async function downloadXlsx() {
     for (let k = i; k <= j; k++) {
       const l = S.lines[k], row = we.getRow(r + k - i), p = l.n ? linePrice(l) : '';
       const nm = l.extra ? '' : (l.sub ? l.name + '/' : l.name);
-      row.values = [k === i ? l.no : null, nm, l.place || '', l.n || '', l.spec || '', l.q === '' ? null : l.q, p === '' ? null : p, l.memo || ''];
-      [3, 4, 5, 6, 7, 8].forEach(c => row.getCell(c).font = pen);
-      row.getCell(7).numFmt = '#,##0'; row.height = 20;
-      for (let c = 1; c <= 8; c++) { const cell = row.getCell(c); cell.border = pbox; if (c <= 2) cell.alignment = { horizontal: 'center', vertical: 'middle' }; }
+      row.values = [k === i ? l.no : null, nm, l.n || '', l.spec || '', l.q === '' ? null : l.q, p === '' ? null : p, l.memo || ''];
+      [3, 4, 5, 6, 7].forEach(c => row.getCell(c).font = pen);
+      row.getCell(6).numFmt = '#,##0'; row.height = 20;
+      for (let c = 1; c <= 7; c++) { const cell = row.getCell(c); cell.border = pbox; if (c <= 2) cell.alignment = { horizontal: 'center', vertical: 'middle' }; }
     }
     if (j > i) we.mergeCells(`A${r}:A${r + j - i}`);
     r += j - i + 1; i = j + 1;
