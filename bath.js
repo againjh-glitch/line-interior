@@ -105,7 +105,7 @@ function lineStatus(l) {
   if (l.q === '') return ['수량?', 'warn'];
   return ['', ''];
 }
-const linePrice = l => isSet(l.n) ? setPrice(find(l.n).n) : l.p;
+const linePrice = l => isSet(l.n) ? (l.vp != null && l.vp !== '' ? l.vp : setPrice(find(l.n).n)) : l.p;
 function lineAmount(l) {
   if (!l.n || l.q === '') return '';
   const p = linePrice(l);
@@ -117,7 +117,7 @@ function metaHtml(l, i) {
 }
 function metaCore(l, i) {
   const it = l.n ? find(l.n) : null;
-  if (!it) return l.n ? '<span class="m-new">목록에 없음 — 단가 넣으면 「내 단가」로 기억</span>' : '';
+  if (!it) return l.n ? (l.p !== '' ? '<span class="m-new">새 자재 — 💾 저장하면 이 단가를 「내 단가」로 기억</span>' : '<span class="m-new">목록에 없음 — 단가 넣으면 「내 단가」로 기억</span>') : '';
   if (isSet(it.n)) return `<span>세트: ${esc(BATH_SETS[it.n].map(([c, q]) => c.split(/[\[(]/)[0].trim() + (q > 1 ? ' ×' + q : '')).join(' · '))}</span>`;
   const bits = [];
   if (it.my) bits.push(`내 단가 ${won(it.my.p)}`);
@@ -126,7 +126,7 @@ function metaCore(l, i) {
   const diff = (l.p !== '' && cur !== '' && Number(l.p) !== Number(cur)) ? ` <button onclick="bathUsePrice(${i})">최근 ${won(cur)}로</button>` : '';
   return `<span>${bits.join(' / ')}</span>${diff}${it.h && it.h.length ? ` <button onclick="bathHistory(${i})">📈</button>` : ''}`;
 }
-const priceVal = l => won(isSet(l.n) ? setPrice(find(l.n).n) : l.p);
+const priceVal = l => won(linePrice(l));
 const nameInput = (l, i, ph) => `<input type="text" class="in-n" data-i="${i}" value="${esc(l.n)}" title="${esc(l.n)}" placeholder="${esc(ph)}" autocomplete="off" aria-label="${esc(lineLabel(l))} 제품명">`;
 
 // 견적서 한 줄. 같은 번호의 줄들은 번호 칸을 세로로 합침 (예: 8번 부자재 → 본드·압착·백시멘·에폭시 4줄)
@@ -140,7 +140,7 @@ function lineRow(l, i, k, span) {
     <td class="pp-prod">${nameInput(l, i, '')}<div class="meta" data-meta="${i}">${metaHtml(l, i)}</div></td>
     <td class="pp-spec"><input type="text" class="in-spec" data-i="${i}" value="${esc(l.spec)}" aria-label="규격"></td>
     <td class="pp-q"><input type="text" inputmode="decimal" class="in-q" data-i="${i}" value="${esc(l.q)}" aria-label="${esc(lineLabel(l))} 수량"></td>
-    <td class="pp-p"><input type="text" inputmode="numeric" class="in-p" data-i="${i}" value="${priceVal(l)}"${set ? ' readonly title="세트 단가 = 구성품 합"' : ''} aria-label="단가"><div class="st" data-st="${i}"></div></td>
+    <td class="pp-p"><input type="text" inputmode="numeric" class="in-p" data-i="${i}" value="${priceVal(l)}"${set ? ' readonly title="세트 단가 = 구성품 합"' : ''} aria-label="단가"><div class="pdiff" data-pd="${i}"></div><div class="st" data-st="${i}"></div></td>
     <td class="pp-memo"><input type="text" class="in-m" data-i="${i}" value="${esc(l.memo)}" aria-label="비고">${l.extra ? `<button class="pp-del" onclick="bathDel(${i})" title="줄 삭제">✕</button>` : ''}</td>
   </tr>`;
 }
@@ -172,6 +172,7 @@ function refreshLine(i, quiet) {
   }
   const sp = $(`.in-spec[data-i="${i}"]`); if (sp && document.activeElement !== sp) sp.value = l.spec || '';
   const se = $(`[data-st="${i}"]`); if (se) { se.textContent = st; se.className = 'st ' + cls; }
+  const pd = $(`[data-pd="${i}"]`); if (pd) pd.innerHTML = diffHtml(l);
   if (!quiet) renderTotals();
 }
 
@@ -181,6 +182,7 @@ function wireInput(el) {
     el.addEventListener('focus', () => openAC(el, i));
     el.addEventListener('input', () => {
       const was = find(l.n); l.n = el.value; const it = find(l.n);
+      delete l.prev; delete l.vp;   // 제품을 바꾸면 업체 견적 비교도 초기화
       if (it) { l.p = priceOf(it); l.spec = sizeOf(it.n); }
       else if (was) { l.p = ''; if (l.spec === sizeOf(was.n)) l.spec = ''; }   // 목록 제품에서 다른 이름으로 바꾸면 단가 비움
       changed(i); openAC(el, i);
@@ -209,6 +211,7 @@ window.bathAddUnder = i => {
 window.bathDel = i => { S.lines.splice(i, 1); saveDraft(); renderLines(); renderOrder(); };
 
 function renderTotals() {
+  if (typeof renderVendorBanner === 'function' && S.vendor) renderVendorBanner();
   let sum = 0, miss = 0;
   S.lines.forEach(l => { const a = lineAmount(l); if (a !== '') sum += a; else if (l.n && lineStatus(l)[1] === 'bad') miss++; });
   const rq = reqTotals();
@@ -277,7 +280,7 @@ function pickAC(k) {
   const x = AC.list[k]; if (!x) return;
   if (AC.mode === 'req') return pickReq(x);
   const i = AC.i, l = S.lines[i], input = AC.input;
-  l.n = x.n; l.p = priceOf(x); l.spec = sizeOf(x.n);
+  l.n = x.n; l.p = priceOf(x); l.spec = sizeOf(x.n); delete l.prev; delete l.vp;
   input.value = x.n;
   closeAC(); changed(i);
   const q = $(`.in-q[data-i="${i}"]`); if (q) q.focus();
@@ -304,13 +307,17 @@ function orderRows() {
     if (!l.n) return;
     if (l.q === 0) return;
     const it = find(l.n);
-    if (it && BATH_SETS[it.n]) {
+    if (it && BATH_SETS[it.n] && l.vp != null && l.vp !== '') {
+      // 업체가 세트 단가로 준 경우: 세트 한 줄 + 구성품(포함)
+      rows.push({ cat: it.c, label: lineLabel(l), n: it.n, q: l.q, p: l.vp, memo: placeMemo(l), st: l.st, prev: l.prev });
+      BATH_SETS[it.n].forEach(([c, cq]) => rows.push({ cat: it.c, label: '', n: '  └ ' + c, q: l.q === '' ? '' : l.q * cq, p: '', inc: true, memo: '세트 포함', st: l.st }));
+    } else if (it && BATH_SETS[it.n]) {
       BATH_SETS[it.n].forEach(([c, cq], k) => {
         const ci = find(c);
         rows.push({ cat: it.c, label: k === 0 ? lineLabel(l) : '', n: c, q: l.q === '' ? '' : l.q * cq, p: priceOf(ci), memo: k === 0 ? placeMemo(l) : '', st: l.st });
       });
     } else {
-      rows.push({ cat: it ? it.c : (l.c === '전체' ? '' : l.c), label: lineLabel(l), n: l.n, q: l.q, p: l.p, memo: placeMemo(l), st: l.st });
+      rows.push({ cat: it ? it.c : (l.c === '전체' ? '' : l.c), label: lineLabel(l), n: l.n, q: l.q, p: l.p, memo: placeMemo(l), st: l.st, prev: l.prev });
     }
   });
   let run = 0;
@@ -324,7 +331,7 @@ function renderOrder() {
   $('#b-order-count').textContent = rows.length || '';
   const body = rows.length ? rows.map(r => `<tr>
       <td class="c">${esc(r.cat)}</td><td>${esc(r.label)}</td><td class="prod">${esc(r.n)}</td>
-      <td class="n${r.q === '' ? ' noq' : ''}">${esc(r.q)}</td><td class="n${r.p === '' ? ' miss' : ''}">${won(r.p)}</td><td class="n">${won(r.amt)}</td>
+      <td class="n${r.q === '' ? ' noq' : ''}">${esc(r.q)}</td><td class="n${r.p === '' && !r.inc ? ' miss' : ''}">${r.inc ? '<small>포함</small>' : won(r.p)}${diffHtml({ prev: r.prev, n: 1, _p: r.p })}</td><td class="n">${won(r.amt)}</td>
       <td>${esc(r.memo)}</td><td class="n">${won(r.run)}</td><td class="c">${esc(r.st)}</td></tr>`).join('')
     : '<tr class="empty"><td colspan="9">견적서에 제품을 넣으면 여기에 주문서가 만들어집니다</td></tr>';
   const rq = reqOrder();
@@ -746,6 +753,121 @@ function printReq(blank) {
 }
 
 
+
+/* ═════════ 여기가 우리집(업체)에 단가 받기: 보내기 링크 → 업체가 단가 입력 → 회신 링크로 반영 ═════════ */
+const LS_VENDOR = 'bath-vendor-name';
+const vendorName = () => { try { return localStorage.getItem(LS_VENDOR) || '여기가 우리집'; } catch (e) { return '여기가 우리집'; } };
+// 지난 단가 대비 ▲▼ (l.prev = 업체 견적 반영 전 단가)
+function diffHtml(l) {
+  if (!l || l.prev === undefined || l.prev === null || !l.n) return '';
+  const cur = l._p !== undefined ? l._p : linePrice(l);
+  if (cur === '' || cur == null) return '';
+  if (l.prev === '') return '<span class="pd pd-new">신규</span>';
+  const d = Number(cur) - Number(l.prev);
+  if (!d) return '<span class="pd pd-eq">= 지난 단가</span>';
+  const pct = l.prev ? ` ${Math.abs(Math.round(d / l.prev * 100))}%` : '';
+  return `<span class="pd ${d > 0 ? 'pd-up' : 'pd-down'}" title="지난 단가 ${won(l.prev)}">${d > 0 ? '▲' : '▼'} ${won(Math.abs(d))}${pct}<small> (지난 ${won(l.prev)})</small></span>`;
+}
+function vendorStats() {
+  let up = 0, down = 0, same = 0, fresh = 0, diff = 0; const items = [];
+  S.lines.forEach(l => {
+    if (!l.n || l.prev === undefined || l.prev === null) return;
+    const cur = linePrice(l); if (cur === '') return;
+    if (l.prev === '') { fresh++; items.push([l, '']); return; }
+    const d = cur - l.prev; const q = l.q === '' ? 1 : l.q;
+    if (d > 0) up++; else if (d < 0) down++; else same++;
+    diff += d * q; items.push([l, d]);
+  });
+  return { up, down, same, fresh, diff, items };
+}
+function renderVendorBanner() {
+  const el = $('#b-vendor-banner'); if (!el) return;
+  if (!S.vendor) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+  const v = S.vendor, st = vendorStats();
+  el.classList.remove('hidden');
+  el.innerHTML = `<b>📥 ${esc(v.name)} 견적 반영됨</b> <small>${esc(new Date(v.at).toLocaleString('ko-KR'))}${v.vat ? ' · 단가 부가세 ' + esc(v.vat) : ''}</small>
+    <span class="vb-stats"><span class="pd pd-up">▲ 오름 ${st.up}</span> <span class="pd pd-down">▼ 내림 ${st.down}</span> <span class="pd pd-eq">= 같음 ${st.same}</span>${st.fresh ? ` <span class="pd pd-new">신규 ${st.fresh}</span>` : ''}
+    · 지난 단가 대비 <b class="${st.diff > 0 ? 'pd-up' : st.diff < 0 ? 'pd-down' : ''}">${st.diff > 0 ? '+' : ''}${won(st.diff)}원</b></span>
+    ${v.memo ? `<div class="vb-memo">💬 ${esc(v.memo)}</div>` : ''}
+    <button onclick="bathVendorList()">변동 보기</button>`;
+}
+window.bathVendorList = () => {
+  const st = vendorStats();
+  $('#b-modal-title').textContent = `📥 ${S.vendor ? S.vendor.name : '업체'} 견적 — 지난 단가 비교`;
+  $('#b-modal-body').innerHTML = `<table class="p-table"><thead><tr><th>품명</th><th>제품명</th><th class="n">지난 단가</th><th class="n">이번 단가</th><th class="n">차이</th></tr></thead><tbody>
+    ${st.items.sort((a, b) => Math.abs(b[1] || 0) - Math.abs(a[1] || 0)).map(([l, d]) => `<tr><td class="cat">${esc(lineLabel(l))}</td><td>${esc(l.n)}</td><td class="n">${l.prev === '' ? '—' : won(l.prev)}</td><td class="n"><b>${won(linePrice(l))}</b></td><td class="n">${diffHtml(l)}</td></tr>`).join('')}
+    </tbody></table>
+    <p class="b-hint" style="margin-top:8px">지난 단가 = 업체 견적을 넣기 전 이 견적서의 단가 (지난 주문·내 단가). 💾 저장하면 이번 단가가 「내 단가」로 기억되어 다음 비교 기준이 됩니다.</p>`;
+  $('#b-modal').classList.remove('hidden');
+};
+
+async function sendToVendor() {
+  const filled = S.lines.filter(l => l.n);
+  if (!filled.length) { alert('견적서에 제품을 먼저 넣어 주세요.'); return; }
+  if (!S.qid) S.qid = 'q' + Date.now().toString(36);
+  S.lines.forEach(l => { if (l.n && !l.id) l.id = Math.random().toString(36).slice(2, 8); });
+  saveDraft();
+  const name = vendorName();
+  const payload = { v: 1, qid: S.qid, to: name, from: S.info.shop || (typeof COMPANY !== 'undefined' ? COMPANY.name : ''), fromTel: S.info.tel || (typeof COMPANY !== 'undefined' ? COMPANY.tel : ''),
+    info: { date: S.info.date, addr: S.info.addr, memo: S.info.memo, site: S.info.site },
+    lines: filled.map(l => ({ id: l.id, no: l.no, nm: l.extra ? '' : lineLabel(l), n: l.n, spec: l.spec || '', q: l.q, memo: l.memo || '' })) };   // 단가는 넣지 않음
+  const url = new URL('bath-quote.html', location.href).href.split('#')[0] + '#q=' + await packQuote(payload);
+  const text = `[${payload.from}] 욕실 자재 견적 요청드립니다${S.info.addr ? ' (' + S.info.addr + ')' : ''}. 단가를 넣어서 보내주세요.\n${url}`;
+  $('#b-modal-title').textContent = `📤 ${name}에 단가 요청 보내기`;
+  $('#b-modal-body').innerHTML = `
+    <p class="b-hint">제품명·규격·수량·비고만 보내고 <b>단가는 보내지 않아요</b>. 받은 분이 링크를 열어 단가를 넣고 「보내기」를 누르면, 돌아온 링크를 열었을 때 이 견적서에 단가가 들어가고 지난 단가와 비교해 ▲▼로 표시됩니다.</p>
+    <label class="vd-name">받는 곳 <input type="text" id="vd-name" value="${esc(name)}"></label>
+    <div class="q-list" style="margin:10px 0">
+      <div class="q-item"><div class="t"><b>${filled.length}품목</b><small>${esc(S.info.addr || '')}</small></div>
+        <button class="go" id="vd-sms">💬 문자</button>${navigator.share ? '<button id="vd-share">📤 카톡 등 공유</button>' : ''}<button id="vd-copy">📋 링크 복사</button><a class="vd-open" href="${esc(url)}" target="_blank" rel="noopener">미리보기</a></div>
+    </div>
+    <div id="vd-msg" class="b-hint"></div>`;
+  $('#b-modal').classList.remove('hidden');
+  $('#vd-name').oninput = e => { try { localStorage.setItem(LS_VENDOR, e.target.value.trim()); } catch (er) {} };
+  $('#vd-sms').onclick = () => { location.href = `sms:?&body=${encodeURIComponent(text)}`; };
+  if ($('#vd-share')) $('#vd-share').onclick = async () => { try { await navigator.share({ title: '욕실 자재 견적 요청', text: text.replace(url, '').trim(), url }); } catch (e) {} };
+  $('#vd-copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(text); $('#vd-msg').textContent = '✅ 복사했어요 — 카톡·문자에 붙여넣어 보내세요.'; }
+    catch (e) { $('#vd-msg').textContent = url; }
+  };
+}
+
+async function receiveVendor(code) {
+  let r;
+  try { r = await unpackQuote(code); } catch (e) { alert('업체 회신 링크가 잘렸거나 맞지 않아요.'); return; }
+  const clear = () => { try { history.replaceState(null, '', location.pathname + '#form'); } catch (e) {} };
+  // 같은 견적이 지금 열려 있지 않으면 저장된 견적에서 찾아 열기
+  let note = '';
+  if (r.qid && S.qid !== r.qid) {
+    const rec = store.get(LS_QUOTES, []).find(x => x.S && x.S.qid === r.qid);
+    if (rec) { S = migrate(JSON.parse(JSON.stringify(rec.S))); curId = rec.id; saveDraft(); renderAll(); note = `저장된 견적 「${esc(rec.site || '')}」을 열었어요. `; }
+    else note = '⚠ 이 회신을 보낸 견적을 이 브라우저에서 찾지 못해서, 제품명이 같은 칸에 넣어요. ';
+  }
+  const n = (r.lines || []).filter(x => x.p !== '' && x.p != null).length;
+  $('#b-modal-title').textContent = `📥 ${r.from || '업체'} 견적 도착`;
+  $('#b-modal-body').innerHTML = `<p>${note}단가 <b>${n}개</b>를 이 견적서에 넣을까요?${r.vat ? ` <small>(부가세 ${esc(r.vat)})</small>` : ''}</p>
+    ${r.memo ? `<p class="b-hint">💬 ${esc(r.memo)}</p>` : ''}
+    <div class="q-list"><div class="q-item"><div class="t"></div><button id="vr-no">취소</button><button class="go" id="vr-go">단가 넣기</button></div></div>`;
+  $('#b-modal').classList.remove('hidden');
+  $('#vr-no').onclick = () => { clear(); closeModal(); };
+  $('#vr-go').onclick = () => {
+    UNDO = JSON.stringify(S);
+    let hit = 0;
+    (r.lines || []).forEach(x => {
+      if (x.p === '' || x.p == null) return;
+      const l = S.lines.find(y => y.id && y.id === x.id) || S.lines.find(y => y.n && key(y.n) === key(x.n));
+      if (!l) return;
+      if (l.prev === undefined || l.prev === null) l.prev = linePrice(l) === '' ? (priceOf(find(l.n)) ?? '') : linePrice(l);
+      const p = Number(x.p);
+      if (isSet(l.n)) l.vp = p; else { l.p = p; l.vp = p; }
+      hit++;
+    });
+    S.vendor = { name: r.from || vendorName(), at: r.at || new Date().toISOString(), vat: r.vat || '', memo: r.memo || '', n: hit };
+    saveDraft(); clear(); renderAll(); closeModal(); showTab('form');
+    window.bathVendorList();
+  };
+}
+
 /* ═════════ 사진·붙여넣기로 채우기 (bath-photo.js 가 씀) ═════════ */
 const normName = t => String(t || '').replace(/[\s/·]/g, '').toLowerCase();
 const toQty = v => { if (v === '' || v == null) return ''; const m = String(v).replace(/,/g, '').match(/\d+(\.\d+)?/); return m ? Number(m[0]) : ''; };
@@ -812,9 +934,9 @@ function showTab(t) {
   closeAC();
   $('#b-total-bar').classList.toggle('hidden', t === 'prices');
   if (t === 'prices') renderPrices();
-  try { if (!location.hash.startsWith('#fill=')) history.replaceState(null, '', '#' + t); } catch (e) {}
+  try { if (!/^#(fill|reply)=/.test(location.hash)) history.replaceState(null, '', '#' + t); } catch (e) {}
 }
-function renderAll() { buildReqCatalog(); renderInfo(); ['site', 'addr', 'date'].forEach(syncInfo); renderLines(); renderReq(); renderOrder(); }
+function renderAll() { buildReqCatalog(); renderVendorBanner(); renderInfo(); ['site', 'addr', 'date'].forEach(syncInfo); renderLines(); renderReq(); renderOrder(); }
 
 buildCatalog();
 // 저장된 견적이 예전 줄 구성이면 빠진 줄을 채움
@@ -844,5 +966,7 @@ catSel.onchange = () => { pLimit = 120; renderPrices(); };
 $('#p-total').textContent = `${BATH_ITEMS.reduce((s, x) => s + (x.h ? x.h.length : 0), 0)}건 (자재 ${BATH_ITEMS.filter(x => x.h).length}종)`;
 renderAll();
 const start = (location.hash || '').slice(1);
+$('#b-send-vendor').onclick = sendToVendor;
+if (start.startsWith('reply=')) receiveVendor(start.slice(6));
 showTab(['form', 'req', 'order', 'prices'].includes(start) ? start : 'form');
 })();
