@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>욕실 자재 견적서 — 라인 인테리어</title>
-  <link rel="stylesheet" href="style.css?v=202610211700">
-  <link rel="stylesheet" href="bath.css?v=202610211700">
+  <link rel="stylesheet" href="style.css?v=202610211730">
+  <link rel="stylesheet" href="bath.css?v=202610211730">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
 <body class="b-body">
@@ -37,22 +37,31 @@
       <span id="b-saved-at" class="b-muted"></span>
     </div>
 
-    <div class="b-card b-info">
-      <label>일자<input id="i-date" type="date"></label>
-      <label>현장명<input id="i-site" type="text" placeholder="소사주공 10동"></label>
-      <label>전화번호<input id="i-tel" type="text" placeholder="010-0000-0000"></label>
-      <label class="b-wide">주소<input id="i-addr" type="text" placeholder="주소"></label>
-      <label class="b-wide">도착일시 / 배송 메모<input id="i-memo" type="text" placeholder="예: 11/5(수) 오전 8시 도착, 사다리차"></label>
+    <div class="b-card b-info b-info-strip">
+      <label>현장명 <small>(자재 주문서 맨 위)</small><input id="i-site" type="text" placeholder="소사주공 10동"></label>
+      <label class="b-wide2">도착일시 / 배송 메모<input id="i-memo" type="text" placeholder="예: 11/5(수) 오전 8시 도착, 사다리차"></label>
     </div>
 
-    <p class="b-hint">제품명 칸을 누르면 그 줄에 맞는 자재가 <b>지난 단가</b>와 함께 나옵니다. 몇 글자만 쳐도 찾아요 (예: <code>738</code>, <code>에폭시</code>, <code>600</code>). 목록에 없으면 그냥 쓰고 단가를 넣으면 됩니다.</p>
+    <p class="b-hint">종이 견적서와 같은 칸입니다. 제품명 칸을 누르면 그 칸에 맞는 자재가 <b>지난 단가</b>와 함께 나와요 (예: <code>738</code>, <code>에폭시</code>, <code>600</code>). 목록에 없으면 그냥 쓰고 단가를 넣으면 됩니다. 번호 옆 <b>＋</b>는 같은 번호에 줄 추가.</p>
 
-    <div class="b-card b-lines-card">
-      <div class="b-lines-head">
-        <span>No</span><span>품명</span><span>제품명</span><span>수량</span><span>단가(원가)</span><span>금액</span><span>비고</span><span>상태</span><span></span>
+    <div class="pp-paper">
+      <div class="pp-title">견 적 서</div>
+      <div class="pp-head">
+        <div class="pp-head-l">
+          <label>일자: <input id="i-date" type="date"></label>
+          <label>상호: <input id="i-shop" type="text"></label>
+        </div>
+        <label class="pp-tel">전화번호: <input id="i-tel" type="text" inputmode="tel"></label>
       </div>
-      <div id="b-lines"></div>
-      <button id="b-addline" class="b-addline">＋ 기타 줄 추가</button>
+      <table class="pp">
+        <colgroup><col class="c-no"><col class="c-nm"><col><col class="c-spec"><col class="c-q"><col class="c-p"><col class="c-memo"></colgroup>
+        <thead>
+          <tr><td colspan="3" class="pp-addr"><label>주소 <input id="i-addr" type="text"></label></td><th rowspan="2">규격</th><th rowspan="2">수량</th><th rowspan="2">단가</th><th rowspan="2">비고</th></tr>
+          <tr><th></th><th>품명</th><th>제품명</th></tr>
+        </thead>
+        <tbody id="b-lines"></tbody>
+      </table>
+      <button id="b-addline" class="b-addline">＋ 27번 기타에 줄 추가</button>
     </div>
   </section>
 
@@ -96,7 +105,7 @@
   </div>
 </div>
 
-<script src="bath-data.js?v=202610211700"></script>
-<script src="bath.js?v=202610211700"></script>
+<script src="bath-data.js?v=202610211730"></script>
+<script src="bath.js?v=202610211730"></script>
 </body>
 </html>

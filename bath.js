@@ -8,7 +8,7 @@
 (function () {
 'use strict';
 
-const LS_DRAFT = 'bath-draft-v1', LS_QUOTES = 'bath-quotes-v1', LS_MY = 'bath-my-prices-v1';
+const LS_DRAFT = 'bath-draft-v2', LS_QUOTES = 'bath-quotes-v1', LS_MY = 'bath-my-prices-v1';
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const won = n => (n === '' || n == null || isNaN(n)) ? '' : Math.round(Number(n)).toLocaleString('ko-KR');
@@ -48,116 +48,160 @@ function setPrice(name) {
 const isSet = n => !!BATH_SETS[n] || !!BATH_SETS[(find(n) || {}).n];
 
 /* ───────── 상태 ───────── */
+const newLine = l => ({ no: l.no, row: l.row, name: l.name, c: l.c, sub: l.sub ? 1 : 0, n: '', spec: '', q: '', p: '', memo: '', st: '' });
 function blankState() {
-  return {
-    info: { date: today(), site: '', tel: '', addr: '', memo: '' },
-    lines: BATH_LINES.map(l => ({ no: l.no, name: l.name, c: l.c, n: '', q: '', p: '', memo: '', st: '' })),
-  };
+  return { v: 2, info: { date: today(), shop: '라인 인테리어', tel: '', addr: '', site: '', memo: '' }, lines: BATH_LINES.map(newLine) };
 }
-let S = store.get(LS_DRAFT, null) || blankState();
+// 예전(종이 양식 이전) 견적을 새 칸에 옮겨 담기
+function migrate(old) {
+  if (!old || old.v === 2) return old;
+  const st = blankState(); Object.assign(st.info, old.info || {});
+  (old.lines || []).filter(l => l.n).forEach(l => {
+    const nm = String(l.name || '').replace(/^.*·\s*/, '').replace(/\s/g, '');
+    const t = st.lines.find(x => !x.n && (x.name.replace(/\s/g, '') === nm || x.name.replace(/\s/g, '') === String(l.name || '').replace(/\s/g, '')))
+           || st.lines.find(x => !x.n && x.c === l.c && !x.sub);
+    if (t) Object.assign(t, { n: l.n, q: l.q, p: l.p, memo: l.memo || '', st: l.st || '' });
+    else st.lines.push(Object.assign(newLine({ no: 27, name: '', c: '전체' }), { extra: 1, n: l.n, q: l.q, p: l.p, memo: l.memo || '' }));
+  });
+  return st;
+}
+let S = migrate(store.get(LS_DRAFT, null)) || blankState();
 let curId = store.get(LS_DRAFT + '-id', null);
 
 function saveDraft() { store.set(LS_DRAFT, S); store.set(LS_DRAFT + '-id', curId); }
 
-/* ───────── 견적서 화면 ───────── */
-const INFO = { date: 'i-date', site: 'i-site', tel: 'i-tel', addr: 'i-addr', memo: 'i-memo' };
+/* ───────── 견적서 화면 (종이 견적서 그대로) ───────── */
+const INFO = { date: 'i-date', shop: 'i-shop', tel: 'i-tel', addr: 'i-addr', site: 'i-site', memo: 'i-memo' };
 function renderInfo() {
   for (const [k, id] of Object.entries(INFO)) {
-    const el = document.getElementById(id); el.value = S.info[k] || '';
+    const el = document.getElementById(id); if (!el) continue;
+    el.value = S.info[k] || '';
     el.oninput = () => { S.info[k] = el.value; saveDraft(); renderOrder(); };
   }
 }
+const sizeOf = n => { const m = String(n || '').match(/\d{3,4}\s*[*xX×]\s*\d{3,4}(\s*[*xX]\s*\d+T?)?/g); return m ? m[m.length - 1].replace(/\s/g, '') : ''; };
+const lineLabel = l => l.sub && l.row ? `${l.row} · ${l.name}` : (l.name || '');
 
 function lineStatus(l) {
   if (!l.n) return ['', ''];
-  if (isSet(l.n)) return l.q === '' ? ['수량 미입력', 'warn'] : ['세트', 'set'];
-  if (l.p === '') return ['⚠ 단가 없음', 'bad'];
-  if (l.q === '') return ['수량 미입력', 'warn'];
+  if (isSet(l.n)) return l.q === '' ? ['수량?', 'warn'] : ['세트', 'set'];
+  if (l.p === '') return ['단가 없음', 'bad'];
+  if (l.q === '') return ['수량?', 'warn'];
   return ['', ''];
 }
+const linePrice = l => isSet(l.n) ? setPrice(find(l.n).n) : l.p;
 function lineAmount(l) {
   if (!l.n || l.q === '') return '';
-  const p = isSet(l.n) ? setPrice(find(l.n)?.n || l.n) : l.p;
+  const p = linePrice(l);
   return p === '' ? '' : l.q * p;
 }
 function metaHtml(l, i) {
   const it = l.n ? find(l.n) : null;
-  if (!it) return l.n ? '<span>목록에 없는 제품 — 단가를 넣고 저장하면 「내 단가」로 기억합니다</span>' : '';
-  if (isSet(it.n)) return `<span>구성: ${esc(BATH_SETS[it.n].map(([c, q]) => c.split(/[\[(]/)[0].trim() + (q > 1 ? ' ×' + q : '')).join(' · '))}</span>`;
+  if (!it) return l.n ? '<span class="m-new">목록에 없음 — 단가 넣으면 「내 단가」로 기억</span>' : '';
+  if (isSet(it.n)) return `<span>세트: ${esc(BATH_SETS[it.n].map(([c, q]) => c.split(/[\[(]/)[0].trim() + (q > 1 ? ' ×' + q : '')).join(' · '))}</span>`;
   const bits = [];
   if (it.my) bits.push(`내 단가 ${won(it.my.p)}`);
-  if (it.k || (it.h && it.h.length)) {
-    bits.push(`지난 주문 ${it.h.length}회` + (it.lo !== it.hi ? ` · ${won(it.lo)}~${won(it.hi)}` : ` · ${won(it.p)}`) + (it.s ? ` · 최근 ${esc(it.s)}` : ''));
-  }
+  if (it.h && it.h.length) bits.push(`지난 ${it.h.length}회` + (it.lo !== it.hi ? ` ${won(it.lo)}~${won(it.hi)}` : '') + (it.s ? ` · ${esc(it.s)}` : ''));
   const cur = priceOf(it);
   const diff = (l.p !== '' && cur !== '' && Number(l.p) !== Number(cur)) ? ` <button onclick="bathUsePrice(${i})">최근 ${won(cur)}로</button>` : '';
-  return `<span>${bits.join(' / ')}</span>${diff}${it.h && it.h.length ? ` <button onclick="bathHistory(${i})">📈 이력</button>` : ''}`;
+  return `<span>${bits.join(' / ')}</span>${diff}${it.h && it.h.length ? ` <button onclick="bathHistory(${i})">📈</button>` : ''}`;
+}
+const priceVal = l => won(isSet(l.n) ? setPrice(find(l.n).n) : l.p);
+const nameInput = (l, i, ph) => `<input type="text" class="in-n" data-i="${i}" value="${esc(l.n)}" title="${esc(l.n)}" placeholder="${esc(ph)}" autocomplete="off" aria-label="${esc(lineLabel(l))} 제품명">`;
+
+// 줄 칸 (1~7, 16~25, 27, 추가 줄)
+function fullRow(l, i, first) {
+  const set = isSet(l.n);
+  return `<tr class="pp-row${l.n ? ' filled' : ''}${l.extra ? ' extra' : ''}" data-row="${i}">
+    <td class="pp-no">${first ? l.no : ''}</td>
+    <td class="pp-nm">${first ? esc(l.name) : ''}${first && !l.extra ? `<button class="pp-add" title="이 번호에 줄 추가" onclick="bathAddUnder(${i})">＋</button>` : ''}</td>
+    <td class="pp-prod">${nameInput(l, i, '제품명')}<div class="meta" data-meta="${i}">${metaHtml(l, i)}</div></td>
+    <td class="pp-spec"><input type="text" class="in-spec" data-i="${i}" value="${esc(l.spec)}" aria-label="규격"></td>
+    <td class="pp-q"><input type="text" inputmode="decimal" class="in-q" data-i="${i}" value="${esc(l.q)}" aria-label="수량"></td>
+    <td class="pp-p"><input type="text" inputmode="numeric" class="in-p" data-i="${i}" value="${priceVal(l)}"${set ? ' readonly title="세트 단가 = 구성품 합"' : ''} aria-label="단가"><div class="st" data-st="${i}"></div></td>
+    <td class="pp-memo"><input type="text" class="in-m" data-i="${i}" value="${esc(l.memo)}" aria-label="비고">${l.extra ? `<button class="pp-del" onclick="bathDel(${i})" title="줄 삭제">✕</button>` : ''}</td>
+  </tr>`;
+}
+// 한 줄 안에 여러 칸 (8~15, 26) — 「본드/ ___ 압착/ ___」
+function subRow(group) {
+  const [i0] = group, l0 = S.lines[i0];
+  const cells = group.map(i => {
+    const l = S.lines[i], set = isSet(l.n);
+    return `<span class="sf${l.n ? ' filled' : ''}" data-row="${i}">
+      <span class="sf-lb">${esc(l.name)}/</span>${nameInput(l, i, '')}<input type="text" inputmode="decimal" class="in-q sf-q" data-i="${i}" value="${esc(l.q)}" placeholder="수량" aria-label="${esc(l.name)} 수량">
+      <span class="sf-2">단가 <input type="text" inputmode="numeric" class="in-p" data-i="${i}" value="${priceVal(l)}"${set ? ' readonly' : ''} aria-label="${esc(l.name)} 단가"><span class="st" data-st="${i}"></span><span class="meta" data-meta="${i}">${metaHtml(l, i)}</span></span>
+    </span>`;
+  }).join('');
+  const wide = !l0.row;   // 26번: 품명 칸 없이 줄 전체
+  return `<tr class="pp-subrow">
+    <td class="pp-no">${l0.no}</td>
+    ${wide ? `<td class="pp-subs" colspan="6">` : `<td class="pp-nm">${esc(l0.row)}</td><td class="pp-subs" colspan="5">`}${cells}</td>
+  </tr>`;
 }
 
 function renderLines() {
-  const host = $('#b-lines');
-  let prevNo = null;
-  host.innerHTML = S.lines.map((l, i) => {
-    const [st, cls] = lineStatus(l);
-    const grp = l.no !== prevNo; prevNo = l.no;
-    const set = isSet(l.n);
-    const sub = l.c && l.c !== '전체' ? `<small>${esc(l.c)}</small>` : '';
-    return `<div class="b-line${grp ? ' grp-start' : ''}${l.n ? ' filled' : ''}" data-i="${i}">
-      <span class="no">${grp ? l.no : ''}</span>
-      <span class="nm">${esc(l.name)}${sub}</span>
-      <div class="prod"><input type="text" class="in-n" value="${esc(l.n)}" placeholder="제품 검색 / 입력" autocomplete="off" aria-label="${esc(l.name)} 제품명">
-        <div class="meta">${metaHtml(l, i)}</div></div>
-      <div class="q"><input type="text" inputmode="decimal" class="in-q" value="${esc(l.q)}" aria-label="수량"></div>
-      <div class="pr"><input type="text" inputmode="numeric" class="in-p${l.n && !set && l.p === '' ? ' noprice' : ''}" value="${set ? won(setPrice(find(l.n).n)) : won(l.p)}" ${set ? 'readonly title="세트 단가는 구성품 단가의 합입니다"' : ''} aria-label="단가"></div>
-      <span class="amt">${won(lineAmount(l))}</span>
-      <div class="memo"><input type="text" class="in-m" value="${esc(l.memo)}" placeholder="비고" aria-label="비고"></div>
-      <div class="ost"><select class="in-st" aria-label="주문상태">${['', '주문', '재고', '직송', '현장구매', '고객준비'].map(o => `<option${o === l.st ? ' selected' : ''}>${o}</option>`).join('')}</select>
-        <div class="st ${cls}">${st}</div></div>
-      <button class="del" title="${l.extra ? '줄 삭제' : '내용 지우기'}" aria-label="지우기">✕</button>
-    </div>`;
-  }).join('');
-  host.querySelectorAll('.b-line').forEach(row => wireLine(row, Number(row.dataset.i)));
+  const rows = [];
+  for (let i = 0; i < S.lines.length; i++) {
+    const l = S.lines[i];
+    if (l.sub) {
+      const g = [i]; while (i + 1 < S.lines.length && S.lines[i + 1].sub && S.lines[i + 1].no === l.no) g.push(++i);
+      rows.push(subRow(g));
+    } else rows.push(fullRow(l, i, !(l.extra && i > 0 && S.lines[i - 1].no === l.no)));
+  }
+  $('#b-lines').innerHTML = rows.join('');
+  $('#b-lines').querySelectorAll('input[data-i]').forEach(wireInput);
+  S.lines.forEach((l, i) => refreshLine(i, true));
   renderTotals();
 }
 
-function refreshLine(i) {
-  const row = $(`.b-line[data-i="${i}"]`); if (!row) return;
-  const l = S.lines[i], [st, cls] = lineStatus(l), set = isSet(l.n);
-  row.classList.toggle('filled', !!l.n);
-  row.querySelector('.meta').innerHTML = metaHtml(l, i);
-  row.querySelector('.amt').textContent = won(lineAmount(l));
-  const pe = row.querySelector('.in-p');
-  if (document.activeElement !== pe) pe.value = set ? won(setPrice(find(l.n).n)) : won(l.p);
-  pe.readOnly = set;
-  pe.classList.toggle('noprice', !!(l.n && !set && l.p === ''));
-  const se = row.querySelector('.st'); se.textContent = st; se.className = 'st ' + cls;
-  renderTotals();
+function refreshLine(i, quiet) {
+  const l = S.lines[i]; if (!l) return;
+  const [st, cls] = lineStatus(l), set = isSet(l.n);
+  const host = $(`[data-row="${i}"]`); if (host) host.classList.toggle('filled', !!l.n);
+  const m = $(`[data-meta="${i}"]`); if (m) m.innerHTML = metaHtml(l, i);
+  const ne = $(`.in-n[data-i="${i}"]`); if (ne) ne.title = l.n || '';
+  const pe = $(`.in-p[data-i="${i}"]`);
+  if (pe) {
+    if (document.activeElement !== pe) pe.value = priceVal(l);
+    pe.readOnly = set; pe.classList.toggle('noprice', !!(l.n && !set && l.p === ''));
+  }
+  const sp = $(`.in-spec[data-i="${i}"]`); if (sp && document.activeElement !== sp) sp.value = l.spec || '';
+  const se = $(`[data-st="${i}"]`); if (se) { se.textContent = st; se.className = 'st ' + cls; }
+  if (!quiet) renderTotals();
 }
 
-function wireLine(row, i) {
-  const l = S.lines[i];
-  const n = row.querySelector('.in-n'), q = row.querySelector('.in-q'), p = row.querySelector('.in-p');
-  n.addEventListener('focus', () => openAC(n, i));
-  n.addEventListener('input', () => {
-    const was = find(l.n); l.n = n.value; const it = find(l.n);
-    if (it) l.p = priceOf(it); else if (was) l.p = '';   // 목록 제품에서 다른 이름으로 바꾸면 단가 비움
-    changed(i); openAC(n, i);
-  });
-  n.addEventListener('keydown', e => acKey(e, n, i));
-  n.addEventListener('blur', () => setTimeout(() => { if (AC.input === n) closeAC(); }, 160));
-  q.addEventListener('input', () => { l.q = parseNum(q.value); changed(i); });
-  p.addEventListener('input', () => { if (!p.readOnly) { l.p = parseNum(p.value); changed(i); } });
-  p.addEventListener('blur', () => { if (!p.readOnly) p.value = won(l.p); });
-  row.querySelector('.in-m').addEventListener('input', e => { l.memo = e.target.value; saveDraft(); renderOrder(); });
-  row.querySelector('.in-st').addEventListener('change', e => { l.st = e.target.value; saveDraft(); renderOrder(); });
-  row.querySelector('.del').addEventListener('click', () => {
-    if (l.extra) S.lines.splice(i, 1); else Object.assign(l, { n: '', q: '', p: '', memo: '', st: '' });
-    saveDraft(); renderLines(); renderOrder();
-  });
+function wireInput(el) {
+  const i = Number(el.dataset.i), l = S.lines[i];
+  if (el.classList.contains('in-n')) {
+    el.addEventListener('focus', () => openAC(el, i));
+    el.addEventListener('input', () => {
+      const was = find(l.n); l.n = el.value; const it = find(l.n);
+      if (it) { l.p = priceOf(it); l.spec = sizeOf(it.n); }
+      else if (was) { l.p = ''; if (l.spec === sizeOf(was.n)) l.spec = ''; }   // 목록 제품에서 다른 이름으로 바꾸면 단가 비움
+      changed(i); openAC(el, i);
+    });
+    el.addEventListener('keydown', e => acKey(e, el, i));
+    el.addEventListener('blur', () => setTimeout(() => { if (AC.input === el) closeAC(); }, 160));
+  } else if (el.classList.contains('in-q')) {
+    el.addEventListener('input', () => { l.q = parseNum(el.value); changed(i); });
+  } else if (el.classList.contains('in-p')) {
+    el.addEventListener('input', () => { if (!el.readOnly) { l.p = parseNum(el.value); changed(i); } });
+    el.addEventListener('blur', () => { if (!el.readOnly) el.value = won(l.p); });
+  } else if (el.classList.contains('in-spec')) {
+    el.addEventListener('input', () => { l.spec = el.value; saveDraft(); });
+  } else if (el.classList.contains('in-m')) {
+    el.addEventListener('input', () => { l.memo = el.value; saveDraft(); renderOrder(); });
+  }
 }
 function changed(i) { saveDraft(); refreshLine(i); renderOrder(); }
 window.bathUsePrice = i => { const l = S.lines[i]; l.p = priceOf(find(l.n)); changed(i); };
 window.bathHistory = i => showHistory(find(S.lines[i].n));
+window.bathAddUnder = i => {
+  const l = S.lines[i]; let k = i; while (k + 1 < S.lines.length && S.lines[k + 1].no === l.no && S.lines[k + 1].extra) k++;
+  S.lines.splice(k + 1, 0, Object.assign(newLine({ no: l.no, name: l.name, c: l.c }), { extra: 1 }));
+  saveDraft(); renderLines(); $(`.in-n[data-i="${k + 1}"]`)?.focus();
+};
+window.bathDel = i => { S.lines.splice(i, 1); saveDraft(); renderLines(); renderOrder(); };
 
 function renderTotals() {
   let sum = 0, miss = 0;
@@ -223,10 +267,10 @@ function closeAC() { $('#b-ac').classList.add('hidden'); AC.input = null; }
 function pickAC(k) {
   const x = AC.list[k]; if (!x) return;
   const i = AC.i, l = S.lines[i], input = AC.input;
-  l.n = x.n; l.p = priceOf(x);
+  l.n = x.n; l.p = priceOf(x); l.spec = sizeOf(x.n);
   input.value = x.n;
   closeAC(); changed(i);
-  const q = $(`.b-line[data-i="${i}"] .in-q`); if (q) q.focus();
+  const q = $(`.in-q[data-i="${i}"]`); if (q) q.focus();
 }
 function acKey(e, input, i) {
   const box = $('#b-ac');
@@ -253,10 +297,10 @@ function orderRows() {
     if (it && BATH_SETS[it.n]) {
       BATH_SETS[it.n].forEach(([c, cq], k) => {
         const ci = find(c);
-        rows.push({ cat: it.c, label: k === 0 ? l.name : '', n: c, q: l.q === '' ? '' : l.q * cq, p: priceOf(ci), memo: k === 0 ? l.memo : '', st: l.st });
+        rows.push({ cat: it.c, label: k === 0 ? lineLabel(l) : '', n: c, q: l.q === '' ? '' : l.q * cq, p: priceOf(ci), memo: k === 0 ? l.memo : '', st: l.st });
       });
     } else {
-      rows.push({ cat: it ? it.c : (l.c === '전체' ? '' : l.c), label: l.name, n: l.n, q: l.q, p: l.p, memo: l.memo, st: l.st });
+      rows.push({ cat: it ? it.c : (l.c === '전체' ? '' : l.c), label: lineLabel(l), n: l.n, q: l.q, p: l.p, memo: l.memo, st: l.st });
     }
   });
   let run = 0;
@@ -334,19 +378,42 @@ async function downloadXlsx() {
   tr.getCell(6).font = { bold: true }; tr.getCell(6).numFmt = '#,##0'; tr.getCell(5).font = { bold: true };
   ws.views = [{ state: 'frozen', ySplit: 2 }];
 
-  // 견적서 시트도 같이
-  const we = wb.addWorksheet('견적서');
-  we.columns = [5, 18, 60, 7, 11, 12, 18, 9].map(width => ({ width }));
-  we.addRow(['견적서']).font = { size: 16, bold: true };
-  we.addRow(['일자', S.info.date, '현장명: ' + (S.info.site || ''), '', '', '', '전화: ' + (S.info.tel || '')]);
-  we.addRow(['주소', S.info.addr]); we.addRow(['메모', S.info.memo]); we.addRow([]);
-  const eh = we.addRow(['No', '품명', '제품명', '수량', '단가', '금액', '비고', '주문상태']);
-  eh.eachCell(c => { c.font = { bold: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } }; c.border = box; });
-  S.lines.filter(l => l.n).forEach(l => {
-    const set = isSet(l.n), p = set ? setPrice(find(l.n).n) : l.p, a = lineAmount(l);
-    const row = we.addRow([l.no, l.name, l.n, l.q === '' ? null : l.q, p === '' ? null : p, a === '' ? null : a, l.memo, l.st]);
-    row.eachCell({ includeEmpty: true }, (c, j) => { c.border = box; if ([4, 5, 6].includes(j)) c.numFmt = '#,##0'; });
-  });
+  // 견적서 시트: 종이 견적서 모양 그대로
+  const we = wb.addWorksheet('견적서', { pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+  we.columns = [4.5, 15, 46, 13, 8, 11, 14].map(width => ({ width }));
+  const ink = { style: 'thin', color: { argb: 'FF374151' } }, pbox = { top: ink, left: ink, bottom: ink, right: ink };
+  const pen = { color: { argb: 'FF1E3A8A' }, size: 11 };
+  we.mergeCells('A1:G1'); we.getCell('A1').value = '견 적 서';
+  we.getCell('A1').font = { size: 20, name: '바탕' }; we.getCell('A1').alignment = { horizontal: 'center' }; we.getRow(1).height = 34;
+  we.getCell('A2').value = '일자:'; we.getCell('B2').value = S.info.date || ''; we.getCell('C2').value = '상호:  ' + (S.info.shop || '');
+  we.getCell('E2').value = '전화번호:'; we.mergeCells('F2:G2'); we.getCell('F2').value = S.info.tel || '';
+  [['B2'], ['C2'], ['F2']].forEach(([c]) => we.getCell(c).font = pen);
+  we.getCell('A3').value = '주소'; we.mergeCells('B3:C3'); we.getCell('B3').value = S.info.addr || ''; we.getCell('B3').font = pen;
+  ['규격', '수량', '단가', '비고'].forEach((t, k) => { const col = 'DEFG'[k]; we.mergeCells(`${col}3:${col}4`); const c = we.getCell(`${col}3`); c.value = t; c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = pbox; });
+  we.getCell('B4').value = '품명'; we.getCell('C4').value = '제품명';
+  ['A4', 'B4', 'C4'].forEach(c => { we.getCell(c).border = pbox; we.getCell(c).alignment = { horizontal: 'center' }; });
+  const subTxt = l => `${l.name}/ ${l.n || ''}${l.q !== '' && l.n ? ' ' + l.q : ''}`;
+  let r = 5;
+  for (let i = 0; i < S.lines.length; i++) {
+    const l = S.lines[i];
+    const row = we.getRow(r);
+    if (l.sub) {
+      const g = [l]; while (i + 1 < S.lines.length && S.lines[i + 1].sub && S.lines[i + 1].no === l.no) g.push(S.lines[++i]);
+      row.getCell(1).value = l.no;
+      if (l.row) { row.getCell(2).value = l.row; we.mergeCells(`C${r}:G${r}`); row.getCell(3).value = g.map(subTxt).join('      '); }
+      else { we.mergeCells(`B${r}:G${r}`); row.getCell(2).value = g.map(subTxt).join('      '); }
+      row.getCell(l.row ? 3 : 2).font = pen; row.getCell(l.row ? 3 : 2).alignment = { wrapText: true, vertical: 'middle' };
+      row.height = 30;
+    } else {
+      const first = !(l.extra && i > 0 && S.lines[i - 1].no === l.no);
+      const p = l.n ? linePrice(l) : '';
+      row.values = [first ? l.no : '', first ? l.name : '', l.n || '', l.spec || '', l.q === '' ? null : l.q, p === '' ? null : p, l.memo || ''];
+      [3, 4, 5, 6, 7].forEach(j => row.getCell(j).font = pen);
+      row.getCell(6).numFmt = '#,##0'; row.height = 22;
+    }
+    for (let j = 1; j <= 7; j++) { const c = row.getCell(j); c.border = pbox; if (j === 1 || (j === 2 && !(l.sub && !l.row))) c.alignment = { horizontal: 'center', vertical: 'middle' }; }
+    r++;
+  }
   const buf = await wb.xlsx.writeBuffer();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
@@ -430,7 +497,7 @@ function openLoad() {
       <button class="go" data-go="${x.id}">열기</button><button data-del="${x.id}">삭제</button></div>`).join('')}</div>`
     : '<p class="b-hint">저장된 견적이 없어요. 💾 저장을 누르면 이 브라우저에 저장됩니다.</p>';
   $('#b-modal-body').querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
-    const x = list.find(y => y.id === b.dataset.go); S = JSON.parse(JSON.stringify(x.S)); curId = x.id;
+    const x = list.find(y => y.id === b.dataset.go); S = migrate(JSON.parse(JSON.stringify(x.S))); curId = x.id;
     saveDraft(); closeModal(); renderAll(); $('#b-saved-at').textContent = '불러옴: ' + (x.site || '');
   });
   $('#b-modal-body').querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
@@ -478,7 +545,7 @@ buildCatalog();
 // 저장된 견적이 예전 줄 구성이면 빠진 줄을 채움
 if (!Array.isArray(S.lines) || !S.lines.length) S = blankState();
 document.querySelectorAll('.b-tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
-$('#b-addline').onclick = () => { S.lines.push({ no: 27, name: '기타', c: '전체', n: '', q: '', p: '', memo: '', st: '', extra: true }); saveDraft(); renderLines(); const ins = document.querySelectorAll('.in-n'); ins[ins.length - 1].focus(); };
+$('#b-addline').onclick = () => { const i27 = S.lines.map(l => l.no).lastIndexOf(27); bathAddUnder(i27 >= 0 ? i27 : S.lines.length - 1); };
 $('#b-save').onclick = saveQuote;
 $('#b-load').onclick = openLoad;
 $('#b-new').onclick = newQuote;

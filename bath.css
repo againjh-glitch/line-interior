@@ -164,3 +164,82 @@
 @media (prefers-color-scheme: dark) {
   .b-body input[type=text], .b-body input[type=date], .b-body input[type=number], .b-body input[type=search], .b-body select { background: var(--bg2); }
 }
+
+/* ════════ 종이 견적서 그대로 (견적서 작성 탭) ════════ */
+.b-info-strip { grid-template-columns: 1fr 2fr; }
+.b-info-strip .b-wide2 { grid-column: auto; }
+.b-info-strip small { font-weight: 400; color: var(--tx3); }
+.pp-paper { --ink: #1f2937; --line: #374151; --pen: #1e3a8a; background: #fff; color: var(--ink); border-radius: 6px; box-shadow: 0 2px 14px rgba(0,0,0,.12); padding: 22px 26px 18px; margin-bottom: 16px; }
+.pp-title { text-align: center; font-size: 26px; font-weight: 500; letter-spacing: 2px; font-family: 'Batang', 'Noto Serif KR', serif; margin-bottom: 4px; }
+.pp-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; font-size: 14px; }
+.pp-head-l { display: flex; gap: 28px; flex-wrap: wrap; }
+.pp-head label, .pp-addr label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.pp-paper input[type=text], .pp-paper input[type=date] { background: transparent; border: 0; border-bottom: 1px dashed #cbd5e1; border-radius: 0; color: var(--pen); font-size: 15px; padding: 3px 4px; outline: none; }
+.pp-paper input:focus { background: #fffbeb !important; border-bottom-color: var(--accent); outline: none; }
+.pp-head input { width: 150px; }
+.pp-tel input { width: 160px; }
+.pp { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13.5px; }
+.pp th, .pp td { border: 1px solid var(--line); padding: 2px 5px; vertical-align: middle; background: #fff; color: var(--ink); }
+.pp th { font-weight: 500; text-align: center; height: 28px; }
+.pp .c-no { width: 34px; } .pp .c-nm { width: 118px; } .pp .c-spec { width: 104px; } .pp .c-q { width: 64px; } .pp .c-p { width: 96px; } .pp .c-memo { width: 124px; }
+.pp-addr { border-top-color: transparent !important; border-left-color: transparent !important; padding-left: 0 !important; }
+.pp-addr label { display: flex; width: 100%; }
+.pp-addr input { flex: 1; min-width: 0; }
+.pp td.pp-no { text-align: center; font-size: 13px; }
+.pp td.pp-nm { text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
+.pp td input { width: 100%; border-bottom: 0 !important; }
+.pp td.pp-q input, .pp td.pp-p input { text-align: right; }
+.pp-row td { height: 38px; }
+.pp-row .meta, .pp-subs .meta { font-size: 10.5px; color: #6b7280; line-height: 1.3; display: flex; gap: 4px; flex-wrap: wrap; }
+.pp-row .meta:empty { display: none; }
+.pp .meta button { font: inherit; border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0; }
+.pp .st { font-size: 10.5px; font-weight: 700; text-align: right; line-height: 1.1; }
+.pp .st.bad { color: #dc2626; } .pp .st.warn { color: #b45309; } .pp .st.set { color: #15803d; }
+.pp input.noprice { background: #fef2f2 !important; }
+.pp-add { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); border: 0; background: none; color: #9ca3af; cursor: pointer; font-size: 14px; opacity: 0; }
+.pp-row:hover .pp-add, .pp-add:focus { opacity: 1; }
+.pp-add:hover { color: var(--accent); }
+.pp-memo { position: relative; }
+.pp-del { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); border: 0; background: none; color: #9ca3af; cursor: pointer; }
+.pp-del:hover { color: #dc2626; }
+.pp-row.extra td { background: #fafafa; }
+/* 한 줄 안의 여러 칸: 「본드/ ___   압착/ ___」 */
+.pp-subs { padding: 3px 6px !important; }
+.pp-subs { display: table-cell; }
+.pp-subs > .sf { display: inline-grid; grid-template-columns: auto minmax(0,1fr) 44px; align-items: center; gap: 0 3px; width: calc(25% - 4px); min-width: 210px; vertical-align: top; margin: 1px 0; padding: 1px 2px; }
+.pp-subs .sf-lb { white-space: nowrap; font-size: 13px; }
+.pp-subs .sf input.in-n { border-bottom: 1px dashed #cbd5e1 !important; }
+.pp-subs .sf-q { border-bottom: 1px dashed #cbd5e1 !important; text-align: right; font-size: 13px !important; }
+.pp-subs .sf-2 { grid-column: 1 / -1; display: none; align-items: center; gap: 4px; font-size: 10.5px; color: #6b7280; flex-wrap: wrap; }
+.pp-subs .sf.filled .sf-2 { display: flex; }
+.pp-subs .sf-2 input { width: 76px !important; font-size: 11.5px !important; padding: 0 3px !important; text-align: right; border-bottom: 1px dashed #cbd5e1 !important; }
+.pp-subs .sf-2 .st { text-align: left; }
+.pp-paper .b-addline { margin-top: 8px; border-radius: 6px; background: #f3f4f6; color: #1d4ed8; }
+.pp-subrow td { height: 40px; }
+
+@media (max-width: 860px) {
+  .b-info-strip { grid-template-columns: 1fr; }
+  .pp-paper { padding: 14px 10px; }
+  .pp-head-l { gap: 8px; flex-direction: column; }
+  .pp, .pp thead, .pp tbody, .pp tr, .pp td { display: block; width: 100%; }
+  .pp colgroup, .pp thead tr:nth-child(2), .pp thead th { display: none; }
+  .pp td { border: 0; }
+  .pp thead td.pp-addr { padding: 0 0 8px !important; }
+  .pp tbody tr { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 6px; padding: 6px 8px; display: grid; grid-template-columns: 26px 1fr 1fr 1fr; gap: 2px 6px; }
+  .pp tbody tr td { padding: 0 !important; height: auto; }
+  .pp-row td.pp-no { grid-column: 1; } .pp-row td.pp-nm { grid-column: 2 / -1; text-align: left; font-weight: 700; }
+  .pp-row td.pp-prod { grid-column: 1 / -1; }
+  .pp-row td.pp-spec::before { content: '규격'; } .pp-row td.pp-q::before { content: '수량'; } .pp-row td.pp-p::before { content: '단가'; }
+  .pp-row td.pp-spec::before, .pp-row td.pp-q::before, .pp-row td.pp-p::before { font-size: 10px; color: #9ca3af; display: block; }
+  .pp-row td.pp-spec { grid-column: 1 / 3; } .pp-row td.pp-q { grid-column: 3; } .pp-row td.pp-p { grid-column: 4; }
+  .pp-row td.pp-memo { grid-column: 1 / -1; }
+  .pp-row td.pp-memo input::placeholder { color: #9ca3af; }
+  .pp-row td input { border-bottom: 1px dashed #cbd5e1 !important; }
+  .pp-subrow td.pp-no { grid-column: 1; } .pp-subrow td.pp-nm { grid-column: 2 / -1; text-align: left; font-weight: 700; }
+  .pp-subrow td.pp-subs { grid-column: 1 / -1; display: block; }
+  .pp-subs > .sf { width: 100%; min-width: 0; display: grid; }
+  .pp-add { opacity: 1; }
+}
+@media print {
+  #tab-form.print-form { display: block !important; }
+}
