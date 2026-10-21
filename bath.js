@@ -478,7 +478,7 @@ function showHistory(it) {
     ${it.my ? `<button class="b-addline" onclick="bathForgetMy('${esc(key(it.n))}')">「내 단가」 지우기</button>` : ''}`;
   $('#b-modal').classList.remove('hidden');
 }
-window.closeModal = () => $('#b-modal').classList.add('hidden');
+window.closeModal = () => { $('#b-modal').classList.add('hidden'); $('#b-modal').classList.remove('b-modal-wide'); };
 $('#b-modal').addEventListener('click', e => { if (e.target.id === 'b-modal') closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 window.bathForgetMy = k => {
@@ -878,11 +878,32 @@ function downloadVendorJpg() {
   xs.forEach((x, k) => line(x, HEAD_H, x, y, k === 0 || k === xs.length - 1 ? '#111' : '#374151', k === 0 || k === xs.length - 1 ? 2 : 1.5));
   line(PAD, y, W - PAD, y, '#111', 2);
   text(`${i.shop || ''}${i.tel ? '  ' + i.tel : ''} · 단가 칸에 적어서 보내주세요`, PAD, y + 36, W - PAD * 2, { size: 18, color: '#6b7280' });
+  // 미리보기 → 다운로드 버튼
+  const fname = `단가요청_${(i.site || i.addr || '현장').replace(/[\\/:*?"<>|]/g, '').slice(0, 30)}_${i.date || today()}.jpg`;
+  const dataUrl = cv.toDataURL('image/jpeg', 0.92);
+  $('#b-modal-title').textContent = `📤 ${vendorName()} 단가 요청서 미리보기`;
+  $('#b-modal-body').innerHTML = `
+    <p class="b-hint">단가 칸이 빈 견적서예요. 확인하고 <b>다운로드</b>해서 카톡·문자로 보내세요.</p>
+    <div class="vj-prev"><img src="${dataUrl}" alt="단가 요청서 미리보기"></div>
+    <div class="vj-btns">
+      <button class="go" id="vj-dl">⬇ JPG 다운로드</button>
+      <button id="vj-share" class="hidden">📤 바로 공유</button>
+      <button onclick="closeModal()">닫기</button>
+    </div>`;
+  $('#b-modal').classList.add('b-modal-wide');
+  $('#b-modal').classList.remove('hidden');
+  $('#vj-dl').onclick = () => {
+    const a = document.createElement('a'); a.href = dataUrl; a.download = fname;
+    document.body.appendChild(a); a.click(); a.remove();
+  };
   cv.toBlob(blob => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `단가요청_${(i.site || i.addr || '현장').replace(/[\\/:*?"<>|]/g, '').slice(0, 30)}_${i.date || today()}.jpg`;
-    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    try {
+      const file = new File([blob], fname, { type: 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        const b = $('#vj-share'); b.classList.remove('hidden');
+        b.onclick = async () => { try { await navigator.share({ files: [file], title: '욕실 자재 단가 요청' }); } catch (e) {} };
+      }
+    } catch (e) {}
   }, 'image/jpeg', 0.92);
 }
 
@@ -895,7 +916,7 @@ async function sendToVendor() {
   const name = vendorName();
   const payload = { v: 1, qid: S.qid, to: name, from: S.info.shop || (typeof COMPANY !== 'undefined' ? COMPANY.name : ''), fromTel: S.info.tel || (typeof COMPANY !== 'undefined' ? COMPANY.tel : ''),
     info: { date: S.info.date, addr: S.info.addr, memo: S.info.memo, site: S.info.site },
-    lines: filled.map(l => ({ id: l.id, no: l.no, nm: l.extra ? '' : lineLabel(l), n: l.n, spec: l.spec || '', q: l.q, memo: l.memo || '' })) };   // 단가는 넣지 않음
+    lines: filled.map(l => ({ id: l.id, no: l.no, nm: l.extra ? '' : lineLabel(l), sub: l.sub ? 1 : 0, grp: l.sub ? grpName(l) : '', sn: l.extra ? '' : l.name, n: l.n, spec: l.spec || '', q: l.q, memo: l.memo || '' })) };   // 단가는 넣지 않음
   const url = new URL('bath-quote.html', location.href).href.split('#')[0] + '#q=' + await packQuote(payload);
   const text = `[${payload.from}] 욕실 자재 견적 요청드립니다${S.info.addr ? ' (' + S.info.addr + ')' : ''}. 단가를 넣어서 보내주세요.\n${url}`;
   $('#b-modal-title').textContent = `📤 ${name}에 단가 요청 보내기`;

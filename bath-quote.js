@@ -24,6 +24,13 @@ async function start() {
   render(saved);
 }
 
+// 같은 번호 줄은 번호(·분류) 칸을 합침
+function span(k) {
+  const L = Q.lines, no = L[k].no;
+  const first = k === 0 || L[k - 1].no !== no;
+  let n = 0; if (first) for (let j = k; j < L.length && L[j].no === no; j++) n++;
+  return { first, n };
+}
 function render(saved) {
   const i = Q.info || {};
   document.title = `욕실 자재 견적 요청 — ${Q.from || ''}`;
@@ -39,13 +46,15 @@ function render(saved) {
         <label class="pp-addr">주소: <b>${esc(i.addr || '')}</b>${i.memo ? ` <small>· ${esc(i.memo)}</small>` : ''}</label>
       </div>
       <table class="pp vq">
-        <colgroup><col class="c-no"><col class="c-nm"><col><col class="c-spec"><col class="c-q"><col class="c-p"><col class="c-p"><col class="c-memo"></colgroup>
-        <thead><tr><th>No</th><th>품명</th><th>제품명</th><th>규격</th><th>수량</th><th>단가</th><th>금액</th><th>비고</th></tr></thead>
-        <tbody>${Q.lines.map((l, k) => `<tr>
-          <td class="c">${esc(l.no)}</td><td class="c">${esc(l.nm)}</td><td>${esc(l.n)}</td><td>${esc(l.spec)}</td><td class="n">${esc(l.q)}</td>
+        <colgroup><col class="c-no"><col class="c-grp"><col class="c-sub"><col><col class="c-spec"><col class="c-q"><col class="c-p"><col class="c-p"><col class="c-memo"></colgroup>
+        <thead><tr><th>No</th><th colspan="2">품명</th><th>제품명</th><th>규격</th><th>수량</th><th>단가</th><th>금액</th><th>비고</th></tr></thead>
+        <tbody>${Q.lines.map((l, k) => { const g = span(k); return `<tr class="${l.sub ? 'sub' : ''}">
+          ${g.first ? `<td class="c pp-no"${g.n > 1 ? ` rowspan="${g.n}"` : ''}>${esc(l.no)}</td>` : ''}
+          ${l.sub ? `${g.first ? `<td class="c pp-grp"${g.n > 1 ? ` rowspan="${g.n}"` : ''}>${esc(l.grp)}</td>` : ''}<td class="c">${esc(l.sn)}</td>` : `<td class="c" colspan="2">${esc(l.sn != null ? l.sn : l.nm)}</td>`}
+          <td>${esc(l.n)}</td><td>${esc(l.spec)}</td><td class="n">${esc(l.q)}</td>
           <td class="vq-in"><input type="text" inputmode="numeric" class="vq-p" data-k="${k}" value="${won(P[l.id])}" aria-label="${esc(l.n)} 단가"></td>
-          <td class="n" data-amt="${k}"></td><td>${esc(l.memo)}</td></tr>`).join('')}</tbody>
-        <tfoot><tr><td colspan="6" class="c">합 계</td><td class="n" id="vq-sum"></td><td></td></tr></tfoot>
+          <td class="n" data-amt="${k}"></td><td>${esc(l.memo)}</td></tr>`; }).join('')}</tbody>
+        <tfoot><tr><td colspan="7" class="c">합 계</td><td class="n" id="vq-sum"></td><td></td></tr></tfoot>
       </table>
       <div class="vq-foot">
         <span>단가 기준</span><select id="vq-vat"><option>별도</option><option>포함</option></select>
