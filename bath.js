@@ -591,6 +591,7 @@ function saveQuote(silent) {
   if (k >= 0) list.splice(k, 1);
   list.unshift(rec);   // 최근 저장한 견적이 맨 위
   let ok = store.set(LS_QUOTES, list);
+  if (ok && cloudOn()) setTimeout(() => cloudSync().catch(() => {}), 50);
   if (!ok) {   // 저장 공간이 차면 오래된 이력부터 줄임
     list.forEach(x => { if (x.vers && x.vers.length > 3) x.vers = x.vers.slice(0, 3); });
     ok = store.set(LS_QUOTES, list);
@@ -657,7 +658,7 @@ function renderHist() {
   host.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
     const r = byId(b.dataset.del);
     if (!confirm(`「${qTitle(r)}」 견적과 이력을 모두 지울까요?`)) return;
-    store.set(LS_QUOTES, all.filter(y => y.id !== r.id)); if (curId === r.id) curId = null; saveDraft(); renderHist();
+    store.set(LS_QUOTES, all.filter(y => y.id !== r.id)); if (curId === r.id) curId = null; saveDraft(); renderHist(); cloudDelete(r.id);
   });
 }
 function newQuote() {
@@ -1163,6 +1164,129 @@ window.BATH = {
   reqCatalog: () => REQ_ITEMS.slice(0, 400).map(x => [x.n, x.spec, x.u]),
 };
 
+
+/* ═════════ ☁ 웹 저장: 비공개 GitHub 저장소에 견적 이력 동기화 ═════════
+ *  견적 1개 = quotes/<id>.json, 내 단가·현장정보·주문일 = meta/*.json
+ *  토큰은 각 컴퓨터 브라우저에만 저장. 같은 견적을 두 곳에서 고치면 마지막에 저장한 쪽이 최신본(이전 것은 이력에 남음). */
+const LS_CLOUD = 'bath-cloud-v1', LS_CLOUD_ST = 'bath-cloud-state-v1';
+const cloudCfg = () => store.get(LS_CLOUD, {});
+const cloudOn = () => { const c = cloudCfg(); return !!(c.repo && c.token); };
+const b64enc = str => { const u = new TextEncoder().encode(str); let b = ''; for (let i = 0; i < u.length; i += 0x8000) b += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(b); };
+const b64dec = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g, '')), c => c.charCodeAt(0)));
+async function gh(method, path, body) {
+  const c = cloudCfg();
+  const r = await fetch(`https://api.github.com/repos/${c.repo}/contents/${path}`, { method, cache: 'no-store',
+    headers: { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+    body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 404) return null;
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(r.status === 401 ? '토큰이 맞지 않거나 만료됐어요' : r.status === 403 ? '토큰에 이 저장소 쓰기 권한이 없어요' : (j.message || '오류') + ' (' + r.status + ')'); e.status = r.status; throw e; }
+  return j;
+}
+async function ghGet(path) { const j = await gh('GET', path); return j ? { sha: j.sha, data: JSON.parse(b64dec(j.content || '')) } : null; }
+async function ghPut(path, data, sha, msg) {
+  const body = { message: msg || 'update ' + path, content: b64enc(JSON.stringify(data)) };
+  if (sha) body.sha = sha;
+  try { return (await gh('PUT', path, body)).content.sha; }
+  catch (e) {
+    if (e.status !== 409 && e.status !== 422) throw e;
+    const cur = await gh('GET', path);   // sha가 바뀌었으면 다시 받아서 재시도
+    if (cur) body.sha = cur.sha; else delete body.sha;
+    return (await gh('PUT', path, body)).content.sha;
+  }
+}
+function cloudStatus(t, bad) { const el = $('#b-cloud'); if (el) { el.textContent = t; el.classList.toggle('bad', !!bad); } }
+let syncing = null, syncAgain = false;
+async function cloudSync() {
+  if (!cloudOn()) { cloudStatus('☁ 웹 저장 설정'); return; }
+  if (syncing) { syncAgain = true; return syncing; }
+  syncing = (async () => {
+    cloudStatus('☁ 동기화 중…');
+    const st = store.get(LS_CLOUD_ST, { shas: {}, at: {} });
+    const dir = await gh('GET', 'quotes') || [];
+    const remote = new Map((Array.isArray(dir) ? dir : []).filter(f => f.name.endsWith('.json')).map(f => [f.name.slice(0, -5), f.sha]));
+    let list = store.get(LS_QUOTES, []);
+    const byId = new Map(list.map(x => [x.id, x]));
+    // ① 받기
+    for (const [id, sha] of remote) {
+      if (st.shas[id] === sha && byId.has(id)) continue;
+      const f = await ghGet(`quotes/${id}.json`); if (!f) continue;
+      const loc = byId.get(id);
+      if (!loc || String(f.data.at) > String(loc.at)) byId.set(id, f.data);
+      st.shas[id] = sha; st.at[id] = f.data.at;
+    }
+    // ② 다른 컴퓨터에서 지운 견적은 여기서도 지움 (그 뒤에 여기서 고친 적이 없을 때만)
+    for (const [id, loc] of byId) if (!remote.has(id) && st.shas[id] && String(loc.at) <= String(st.at[id] || '')) { byId.delete(id); delete st.shas[id]; delete st.at[id]; }
+    // ③ 올리기
+    for (const [id, loc] of byId) {
+      if (remote.has(id) && String(loc.at) <= String(st.at[id] || '')) continue;
+      st.shas[id] = await ghPut(`quotes/${id}.json`, loc, remote.get(id) || st.shas[id], `견적 저장: ${qTitle(loc)} (${loc.at})`);
+      st.at[id] = loc.at;
+    }
+    list = [...byId.values()].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    store.set(LS_QUOTES, list);
+    // 내 단가 · 현장정보 · 주문일 (합치기)
+    for (const [file, ls] of [['meta/my-prices.json', LS_MY], ['meta/sites.json', LS_ALIAS], ['meta/job-dates.json', LS_JOBDATE]]) {
+      const f = await ghGet(file);
+      const loc = store.get(ls, {}), merged = Object.assign({}, f ? f.data : {}, loc);
+      store.set(ls, merged);
+      if (!f || JSON.stringify(f.data) !== JSON.stringify(merged)) await ghPut(file, merged, f && f.sha, 'update ' + file);
+    }
+    st.last = new Date().toISOString();
+    store.set(LS_CLOUD_ST, st);
+    buildCatalog(); buildReqCatalog();
+    if (!$('#tab-hist').classList.contains('hidden')) renderHist();
+    if (!$('#tab-prices').classList.contains('hidden')) renderPrices();
+    cloudStatus('☁ 동기화됨 ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }));
+  })().catch(e => { cloudStatus('☁ 동기화 실패', true); console.warn(e); throw e; })
+     .finally(() => { syncing = null; if (syncAgain) { syncAgain = false; setTimeout(() => cloudSync().catch(() => {}), 300); } });
+  return syncing;
+}
+async function cloudDelete(id) {
+  if (!cloudOn()) return;
+  const st = store.get(LS_CLOUD_ST, { shas: {}, at: {} });
+  try {
+    const cur = await gh('GET', `quotes/${id}.json`);
+    if (cur) await gh('DELETE', `quotes/${id}.json`, { message: '견적 삭제 ' + id, sha: cur.sha });
+    delete st.shas[id]; delete st.at[id]; store.set(LS_CLOUD_ST, st);
+  } catch (e) { cloudStatus('☁ 삭제 실패', true); }
+}
+function openCloud() {
+  const c = cloudCfg(), st = store.get(LS_CLOUD_ST, {});
+  $('#b-modal-title').textContent = '☁ 웹 저장 (여러 컴퓨터에서 같은 견적 이력)';
+  $('#b-modal-body').innerHTML = `
+    <p class="b-hint">견적 이력·내 단가·현장정보를 <b>비공개 GitHub 저장소</b>에 저장해서, 연결한 컴퓨터끼리 똑같이 보여요. 💾 저장·삭제할 때와 사이트를 열 때 자동으로 맞춰집니다.${st.last ? `<br>마지막 동기화: ${esc(new Date(st.last).toLocaleString('ko-KR'))}` : ''}</p>
+    <details class="cl-guide"${c.token ? '' : ' open'}><summary>처음 한 번 준비하기 (5분)</summary>
+      <ol>
+        <li><a href="https://github.com/new" target="_blank" rel="noopener">github.com/new</a> → 이름 <b>line-interior-data</b>, <b>Private</b> 선택, 「Add a README file」 체크 → Create repository</li>
+        <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">토큰 만들기</a> (Fine-grained token) → Repository access: <b>Only select repositories → line-interior-data</b> → Permissions › Repository › <b>Contents: Read and write</b> → Generate → <code>github_pat_…</code> 복사</li>
+        <li>아래에 저장소 이름과 토큰을 넣고 「연결」. 다른 컴퓨터에서도 같은 토큰으로 한 번씩 연결하면 끝.</li>
+      </ol>
+      <p class="b-hint">토큰은 그 컴퓨터 브라우저에만 저장돼요. 공용 PC에는 넣지 마세요. 손님 주소가 들어가니 저장소는 꼭 <b>Private</b>로 만들어 주세요.</p>
+    </details>
+    <label class="cl-f">저장소 <input type="text" id="cl-repo" value="${esc(c.repo || 'againjh-glitch/line-interior-data')}" placeholder="아이디/저장소이름"></label>
+    <label class="cl-f">토큰 <input type="password" id="cl-token" value="${esc(c.token || '')}" placeholder="github_pat_…" autocomplete="off"></label>
+    <div class="vj-btns"><button class="go" id="cl-go">연결하고 지금 동기화</button>${c.token ? '<button id="cl-off">연결 끊기</button>' : ''}<button onclick="closeModal()">닫기</button></div>
+    <div id="cl-msg" class="b-hint"></div>`;
+  $('#b-modal').classList.remove('hidden');
+  $('#cl-go').onclick = async () => {
+    const repo = $('#cl-repo').value.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, ''), token = $('#cl-token').value.trim();
+    if (!/^[\w.-]+\/[\w.-]+$/.test(repo) || !token) { $('#cl-msg').textContent = '저장소(아이디/이름)와 토큰을 넣어 주세요.'; return; }
+    store.set(LS_CLOUD, { repo, token });
+    $('#cl-msg').textContent = '⏳ 연결 중…';
+    try {
+      const r = await fetch(`https://api.github.com/repos/${repo}`, { headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' } });
+      if (r.status === 404) throw new Error('저장소를 찾을 수 없어요 (이름이나 토큰 권한 확인)');
+      if (r.status === 401) throw new Error('토큰이 맞지 않아요');
+      const info = await r.json();
+      if (info.private === false) throw new Error('이 저장소는 공개(Public)예요. 손님 정보가 공개되니 Private 저장소를 써 주세요.');
+      await cloudSync();
+      $('#cl-msg').innerHTML = `✅ 연결됐어요. 견적 ${store.get(LS_QUOTES, []).length}개가 맞춰졌어요.`;
+    } catch (e) { $('#cl-msg').textContent = '❌ ' + e.message; if (/Public|공개/.test(e.message)) store.set(LS_CLOUD, {}); cloudStatus('☁ 웹 저장 설정', true); }
+  };
+  if ($('#cl-off')) $('#cl-off').onclick = () => { store.set(LS_CLOUD, {}); store.set(LS_CLOUD_ST, { shas: {}, at: {} }); cloudStatus('☁ 웹 저장 설정'); closeModal(); };
+}
+
 /* ───────── 탭 / 시작 ───────── */
 function showTab(t) {
   document.querySelectorAll('.b-tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
@@ -1170,7 +1294,7 @@ function showTab(t) {
   closeAC();
   $('#b-total-bar').classList.toggle('hidden', t === 'prices' || t === 'hist');
   if (t === 'prices') renderPrices();
-  if (t === 'hist') renderHist();
+  if (t === 'hist') { renderHist(); if (cloudOn()) cloudSync().catch(() => {}); }
   try { if (!/^#(fill|reply)=/.test(location.hash)) history.replaceState(null, '', '#' + t); } catch (e) {}
 }
 function renderAll() { buildReqCatalog(); renderVendorBanner(); renderInfo(); ['site', 'addr', 'date'].forEach(syncInfo); renderLines(); renderReq(); renderOrder(); }
@@ -1203,6 +1327,9 @@ catSel.onchange = () => { pLimit = 120; renderPrices(); };
 $('#p-site').onchange = () => { pLimit = 120; renderPrices(); };
 $('#p-total').textContent = `${BATH_ITEMS.reduce((s, x) => s + (x.h ? x.h.length : 0), 0)}건 (자재 ${BATH_ITEMS.filter(x => x.h).length}종)`;
 renderAll();
+$('#b-cloud').onclick = openCloud;
+if (cloudOn()) cloudSync().catch(() => {}); else cloudStatus('☁ 웹 저장 설정');
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && cloudOn()) cloudSync().catch(() => {}); });
 const start = (location.hash || '').slice(1);
 $('#b-send-vendor').onclick = downloadVendorJpg;
 if (start.startsWith('reply=')) receiveVendor(start.slice(6));

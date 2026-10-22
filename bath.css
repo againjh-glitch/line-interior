@@ -445,3 +445,13 @@
 .ps-date { font-size: 12.5px; color: var(--tx2); display: inline-flex; align-items: center; gap: 6px; }
 .ps-date input { width: 130px !important; padding: 4px 6px !important; font-size: 12.5px !important; }
 .ps-addr { font-size: 12.5px; color: var(--tx2); }
+
+/* ☁ 웹 저장 */
+.b-toolbar .b-cloud { background: var(--bg); border-color: #0ea5e9; color: #0369a1; font-weight: 700; }
+.b-toolbar .b-cloud.bad { border-color: var(--red); color: var(--red); }
+.cl-guide { margin: 8px 0 12px; font-size: 13px; }
+.cl-guide summary { cursor: pointer; font-weight: 700; }
+.cl-guide ol { margin: 8px 0 6px 20px; display: flex; flex-direction: column; gap: 6px; }
+.cl-guide a { color: var(--accent); }
+.cl-f { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; margin-top: 8px; }
+.cl-f input { flex: 1; }
