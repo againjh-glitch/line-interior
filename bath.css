@@ -434,3 +434,11 @@
 .h-ver:last-child { border-bottom: 0; }
 .h-ver small { color: var(--accent); }
 @media (max-width: 860px) { .h-card { grid-template-columns: 1fr; } .h-btns { justify-content: flex-start; } }
+
+/* 단가 이력 · 현장별 보기 */
+#p-site { max-width: 260px; }
+.ps-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 14px; margin-bottom: 8px; }
+.ps-open { margin-left: auto; font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 7px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+.p-table td small { color: var(--tx3); }
+.h-site { color: var(--accent); text-decoration: none; }
+.h-site:hover { text-decoration: underline; }
