@@ -122,7 +122,7 @@ function metaCore(l, i) {
   if (isSet(it.n)) return `<span>세트: ${esc(BATH_SETS[it.n].map(([c, q]) => c.split(/[\[(]/)[0].trim() + (q > 1 ? ' ×' + q : '')).join(' · '))}</span>`;
   const bits = [];
   if (it.my) bits.push(`내 단가 ${won(it.my.p)}`);
-  if (it.h && it.h.length) bits.push(`지난 ${it.h.length}회` + (it.lo !== it.hi ? ` ${won(it.lo)}~${won(it.hi)}` : '') + (it.s ? ` · ${esc(it.s)}` : ''));
+  if (it.h && it.h.length) bits.push(`지난 ${it.h.length}회` + (it.lo !== it.hi ? ` ${won(it.lo)}~${won(it.hi)}` : '') + (it.s ? ` · ${esc(siteName(it.s))}` : ''));
   const cur = priceOf(it);
   const diff = (l.p !== '' && cur !== '' && Number(l.p) !== Number(cur)) ? ` <button onclick="bathUsePrice(${i})">최근 ${won(cur)}로</button>` : '';
   return `<span>${bits.join(' / ')}</span>${diff}${it.h && it.h.length ? ` <button onclick="bathHistory(${i})">📈</button>` : ''}`;
@@ -447,6 +447,13 @@ async function downloadXlsx() {
 /* ───────── 단가 이력 ───────── */
 let pLimit = 120;
 /* 현장별 보기: 그 현장에 들어간 자재만, 그 현장 당시 단가·수량으로 */
+const LS_JOBDATE = 'bath-job-dates-v1';
+const JOB = new Map((typeof BATH_JOBS !== 'undefined' ? BATH_JOBS : []).map(j => typeof j === 'string' ? [j, { n: j }] : [j.n, j]));
+// 동·호수·주소는 공개 사이트에 없고, 「현장정보」 파일을 가져오면 이 브라우저에서만 보임
+const LS_ALIAS = 'bath-site-alias-v1';
+const siteAlias = n => (store.get(LS_ALIAS, {})[n]) || null;
+const siteName = n => { const a = siteAlias(n); return a && a.n ? a.n : n; };
+const jobDate = n => (store.get(LS_JOBDATE, {})[n]) || (JOB.get(n) || {}).d || '';
 function fillSiteSelect() {
   const sel = $('#p-site'); if (!sel) return;
   const cur = sel.value;
@@ -454,14 +461,14 @@ function fillSiteSelect() {
   const saved = store.get(LS_QUOTES, []).filter(x => x.S && hasContent(x.S));
   sel.innerHTML = `<option value="">전체 현장 (자재별)</option>
     ${saved.length ? `<optgroup label="🗂 저장한 견적">${saved.map(x => `<option value="q:${esc(x.id)}">${esc(qTitle(x))} · ${esc(x.date || '')}</option>`).join('')}</optgroup>` : ''}
-    <optgroup label="📒 지난 주문 (엑셀, 최근 순)">${[...BATH_JOBS].reverse().filter(j => cnt[j]).map(j => `<option value="x:${esc(j)}">${esc(j)} (${cnt[j]})</option>`).join('')}</optgroup>`;
+    <optgroup label="📒 지난 주문 (엑셀, 최근 순)">${[...JOB.keys()].reverse().filter(j => cnt[j]).map(j => `<option value="x:${esc(j)}">${esc(siteName(j))}${jobDate(j) ? ' · ' + esc(jobDate(j)) : ''} (${cnt[j]})</option>`).join('')}</optgroup>`;
   if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
 }
 function siteRows(v) {
   if (v.startsWith('x:')) {
     const site = v.slice(2), rows = [];
     ITEMS.forEach(x => (x.h || []).forEach(r => { if (r[0] === site) rows.push({ it: x, c: x.c, n: x.n, p: r[1], q: r[2] === '' || r[2] == null ? '' : Number(r[2]) }); }));
-    return { title: site, rows, rec: null };
+    return { title: siteName(site), rows, rec: null, job: Object.assign({ n: site }, JOB.get(site) || {}, { a: (siteAlias(site) || {}).a || '' }) };
   }
   const rec = store.get(LS_QUOTES, []).find(x => 'q:' + x.id === v);
   if (!rec) return { title: '', rows: [], rec: null };
@@ -472,10 +479,10 @@ function siteRows(v) {
     rows.push({ it, c: it ? it.c : (l.c === '전체' ? '기타' : l.c), label: lineLabel(l), n: l.n, p, q: l.q });
   });
   (st.req || []).filter(r => r.n).forEach(r => rows.push({ it: null, c: '현장 요청', label: [r.place, r.who].filter(Boolean).join(' · '), n: r.n + (r.spec ? ' ' + r.spec : ''), p: r.p, q: r.q }));
-  return { title: qTitle(rec), rows, rec };
+  return { title: qTitle(rec), rows, rec, job: null };
 }
 function renderSitePrices(v, toks, raw, cat) {
-  const { title, rows: all, rec } = siteRows(v);
+  const { title, rows: all, rec, job } = siteRows(v);
   const rows = all.filter(r => (!cat || r.c === cat) && toks.every(t => key(r.n).includes(t)));
   let sum = 0, up = 0, down = 0;
   const body = rows.map(r => {
@@ -487,13 +494,18 @@ function renderSitePrices(v, toks, raw, cat) {
     return `<tr class="row" data-n="${esc(r.it ? r.it.n : '')}"><td class="cat">${esc(r.c)}${r.label ? `<br><small>${esc(r.label)}</small>` : ''}</td><td>${hl(r.n, raw)}</td>
       <td class="n"><b>${won(r.p)}</b></td><td class="n">${esc(r.q)}</td><td class="n">${won(amt)}</td><td class="n">${won(now)} ${cmp}</td></tr>`;
   }).join('');
-  $('#b-prices').innerHTML = `<div class="ps-head"><b>${esc(title)}</b> — 자재 ${rows.length}개 · 합계 <b>${won(sum)}원</b>${up || down ? ` · 지금 단가와 비교: <span class="pd pd-up">▲ ${up}</span> <span class="pd pd-down">▼ ${down}</span>` : ''}
+  const when = rec ? `<span class="ps-date">📅 견적 일자 ${esc(rec.date || '-')}</span>`
+    : `<label class="ps-date">📅 주문일 <input type="text" id="ps-date" value="${esc(jobDate(job.n))}" placeholder="예: 2025-11-05"></label>`;
+  const where = rec ? (rec.addr || '') : (job.a || '');
+  $('#b-prices').innerHTML = `<div class="ps-head"><b>${esc(title)}</b>${when}${where ? `<span class="ps-addr">📍 ${esc(where)}</span>` : ''}${job && job.src ? `<span class="ps-addr">엑셀 「${esc(job.src)}」</span>` : ''}</div>
+    <div class="ps-head"> 자재 ${rows.length}개 · 합계 <b>${won(sum)}원</b>${up || down ? ` · 지금 단가와 비교: <span class="pd pd-up">▲ ${up}</span> <span class="pd pd-down">▼ ${down}</span>` : ''}
       ${rec ? `<button class="ps-open" id="ps-open">견적서로 열기</button>` : ''}</div>
     <table class="p-table"><thead><tr><th>분류</th><th>제품명</th><th class="n">이 현장 단가</th><th class="n">수량</th><th class="n">금액</th><th class="n">지금 단가</th></tr></thead><tbody>${body}</tbody></table>
     ${!rows.length ? '<div class="p-more">이 현장에 해당하는 자재가 없어요</div>' : ''}
     <p class="b-hint" style="margin-top:8px">지금 단가 = 최근 주문(또는 「내 단가」) 기준. 줄을 누르면 그 자재의 현장별 단가 이력이 보여요.</p>`;
   $('#b-prices').querySelectorAll('tr.row').forEach(tr => tr.onclick = () => { const it = find(tr.dataset.n); if (it) showHistory(it); });
   if (rec && $('#ps-open')) $('#ps-open').onclick = () => openQuote(rec);
+  if ($('#ps-date')) $('#ps-date').onchange = e => { const m = store.get(LS_JOBDATE, {}); const v = e.target.value.trim(); if (v) m[job.n] = v; else delete m[job.n]; store.set(LS_JOBDATE, m); fillSiteSelect(); };
 }
 function renderPrices() {
   const q = $('#p-q').value.trim(), cat = $('#p-cat').value;
@@ -506,7 +518,7 @@ function renderPrices() {
   $('#b-prices').innerHTML = `<table class="p-table"><thead><tr><th>분류</th><th>제품명</th><th class="n">최근 단가</th><th class="n">최저~최고</th><th class="n">횟수</th><th>최근 현장</th></tr></thead><tbody>
     ${shown.map(x => `<tr class="row" data-n="${esc(x.n)}"><td class="cat">${esc(x.c)}</td><td>${hl(x.n, q.split(/\s+/).filter(Boolean))}${x.my ? '<span class="tag">내 단가 ' + won(x.my.p) + '</span>' : ''}</td>
       <td class="n"><b>${won(x.h && x.h.length ? x.p : x.my.p)}</b></td><td class="n">${x.h && x.h.length ? (x.lo === x.hi ? '—' : won(x.lo) + '~' + won(x.hi)) : ''}</td>
-      <td class="n">${x.h ? x.h.length : 0}</td><td>${esc(x.s || (x.my && x.my.s) || '')}</td></tr>`).join('')}
+      <td class="n">${x.h ? x.h.length : 0}</td><td>${esc(x.s ? siteName(x.s) : ((x.my && x.my.s) || ''))}${x.s && jobDate(x.s) ? ` <small class="cat">${esc(jobDate(x.s))}</small>` : ''}</td></tr>`).join('')}
     </tbody></table>${list.length > shown.length ? `<div class="p-more"><button class="b-addline" id="p-more">${list.length - shown.length}개 더 보기</button></div>` : ''}
     ${!list.length ? '<div class="p-more">검색 결과가 없어요</div>' : ''}`;
   $('#b-prices').querySelectorAll('tr.row').forEach(tr => tr.onclick = () => showHistory(find(tr.dataset.n)));
@@ -524,8 +536,8 @@ function showHistory(it) {
       ${h.length ? `<div>최저 ~ 최고<b>${won(it.lo)} ~ ${won(it.hi)}</b></div><div>주문 횟수<b>${h.length}회</b></div>` : ''}
       ${it.my ? `<div>내 단가<b>${won(it.my.p)}</b><small>${esc(it.my.d || '')} ${esc(it.my.s || '')}</small></div>` : ''}
     </div>
-    ${h.length ? `<table class="p-table"><thead><tr><th>#</th><th>현장</th><th class="n">원가</th><th class="n">수량</th><th style="width:30%"></th></tr></thead><tbody>
-      ${h.map((r, k) => `<tr><td class="cat">${k + 1}</td><td><a href="#" class="h-site" data-site="${esc(r[0])}">${esc(r[0])}</a></td><td class="n">${won(r[1])}</td><td class="n">${esc(r[2])}</td><td><div class="h-bar" style="width:${Math.round(r[1] / max * 100)}%"></div></td></tr>`).reverse().join('')}
+    ${h.length ? `<table class="p-table"><thead><tr><th>#</th><th>현장</th><th>주문일</th><th class="n">원가</th><th class="n">수량</th><th style="width:30%"></th></tr></thead><tbody>
+      ${h.map((r, k) => `<tr><td class="cat">${k + 1}</td><td><a href="#" class="h-site" data-site="${esc(r[0])}">${esc(siteName(r[0]))}</a></td><td class="cat">${esc(jobDate(r[0]))}</td><td class="n">${won(r[1])}</td><td class="n">${esc(r[2])}</td><td><div class="h-bar" style="width:${Math.round(r[1] / max * 100)}%"></div></td></tr>`).reverse().join('')}
     </tbody></table><p class="b-hint" style="margin-top:8px">위쪽이 최근 주문입니다 (엑셀에서 아래쪽에 적힌 순서).</p>` : '<p class="b-hint">지난 주문 기록이 없어요.</p>'}
     ${it.my ? `<button class="b-addline" onclick="bathForgetMy('${esc(key(it.n))}')">「내 단가」 지우기</button>` : ''}`;
   $('#b-modal-body').querySelectorAll('.h-site').forEach(a => a.onclick = e => { e.preventDefault(); closeModal(); showTab('prices'); fillSiteSelect(); $('#p-site').value = 'x:' + a.dataset.site; renderPrices(); });
@@ -654,7 +666,7 @@ function newQuote() {
   $('#b-saved-at').textContent = had ? '이전 견적은 「🗂 견적 이력」에 저장했어요. 새 견적이에요.' : '';
 }
 function backup() {
-  const data = { kind: 'bath-backup', at: new Date().toISOString(), quotes: store.get(LS_QUOTES, []), my: store.get(LS_MY, {}) };
+  const data = { kind: 'bath-backup', at: new Date().toISOString(), quotes: store.get(LS_QUOTES, []), my: store.get(LS_MY, {}), sites: store.get(LS_ALIAS, {}), jobDates: store.get(LS_JOBDATE, {}) };
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
   a.download = `욕실견적_백업_${today()}.json`; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 500);
@@ -663,10 +675,14 @@ function restore(file) {
   const fr = new FileReader();
   fr.onload = () => {
     try {
-      const d = JSON.parse(fr.result); if (d.kind !== 'bath-backup') throw 0;
+      const d = JSON.parse(fr.result);
+      if (d.kind === 'bath-sites') { store.set(LS_ALIAS, d.sites || {}); renderAll(); renderPrices(); alert('현장 동·호수 ' + Object.keys(d.sites || {}).length + '곳을 이 브라우저에 넣었어요.'); return; }
+      if (d.kind !== 'bath-backup') throw 0;
       const cur = store.get(LS_QUOTES, []), ids = new Set(cur.map(x => x.id));
       store.set(LS_QUOTES, cur.concat((d.quotes || []).filter(x => !ids.has(x.id))));
       store.set(LS_MY, Object.assign(store.get(LS_MY, {}), d.my || {}));
+      if (d.sites) store.set(LS_ALIAS, Object.assign(store.get(LS_ALIAS, {}), d.sites));
+      if (d.jobDates) store.set(LS_JOBDATE, Object.assign(store.get(LS_JOBDATE, {}), d.jobDates));
       buildCatalog(); renderAll(); alert('가져왔어요: 견적 ' + (d.quotes || []).length + '개, 내 단가 ' + Object.keys(d.my || {}).length + '개');
     } catch (e) { alert('욕실 견적 백업 파일이 아니에요.'); }
   };
