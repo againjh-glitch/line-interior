@@ -173,6 +173,7 @@ function showResult(r) {
   BATH.showTab(tab);
   openModal('✅ 채웠어요', `
     <p>${r.bath ? `욕실 견적서 <b>${r.bath}칸</b>` : ''}${r.bath && r.req ? ', ' : ''}${r.req ? `현장 요청 <b>${r.req}줄</b>` : ''}을 채웠어요.${!r.bath && !r.req ? ' — 읽은 자재가 없어요. 사진이 흐리지 않은지 확인해 주세요.' : ''}</p>
+    ${r.fresh ? '<p class="b-hint">🗂 원래 열려 있던 견적은 「견적 이력」에 저장해 두고, <b>새 견적</b>에 채웠어요.</p>' : ''}
     <p class="b-hint">칸 아래 <b>📷</b> 는 손글씨 원문이에요. 자재 목록과 맞춰 넣은 이름이 맞는지 한 번 훑어봐 주세요.</p>
     ${r.noPrice.length ? `<p class="b-hint">⚠ 단가가 없는 품목: ${[...new Set(r.noPrice)].map(esc).join(', ')} — 제품명 칸을 눌러 목록에서 고르거나 단가를 넣으세요.</p>` : ''}
     ${r.skipped.length ? `<p class="b-hint">칸을 못 찾은 것: ${r.skipped.map(esc).join(', ')}</p>` : ''}
@@ -186,7 +187,7 @@ window.bathFillFromLink = code => {
   try { data = decodeFill(code); } catch (e) { openModal('채우기 링크', '<p>링크가 잘렸거나 맞지 않아요. 링크 전체를 다시 복사해 주세요.</p>'); return; }
   const n = (data.lines || []).length + (data.rows || []).length;
   openModal('📷 채우기 링크', `<p>사진에서 읽은 자재 <b>${n}개</b>로 칸을 채울까요?${data.info && data.info.addr ? `<br><small>${esc(data.info.addr)}</small>` : ''}</p>
-    <p class="b-hint">지금 견적서의 빈 칸에 채워 넣어요. 새 현장이면 먼저 💾 저장 후 🆕 새 견적을 눌러 두세요.</p>
+    <p class="b-hint">새 견적으로 채워요. 지금 열려 있는 견적은 「🗂 견적 이력」에 자동으로 저장돼요.</p>
     <div class="q-list"><div class="q-item"><div class="t"></div><button onclick="closeModal()">취소</button><button class="go" id="ph-link-go">채우기</button></div></div>`);
   $('#ph-link-go').onclick = () => { clearHash(); showResult(BATH.applyFill(data)); };
   document.querySelector('#b-modal-body button:not(.go)').addEventListener('click', clearHash);

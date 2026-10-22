@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>욕실 자재 견적서 — 라인 인테리어</title>
-  <link rel="stylesheet" href="style.css?v=202610212400">
-  <link rel="stylesheet" href="bath.css?v=202610212400">
+  <link rel="stylesheet" href="style.css?v=202610221300">
+  <link rel="stylesheet" href="bath.css?v=202610221300">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
 <body class="b-body">
@@ -25,6 +25,7 @@
     <button role="tab" data-tab="req">🧾 현장 요청</button>
     <button role="tab" data-tab="order">📦 자재 주문서 <span id="b-order-count" class="b-pill"></span></button>
     <button role="tab" data-tab="prices">📈 단가 이력</button>
+    <button role="tab" data-tab="hist">🗂 견적 이력</button>
   </nav>
 </header>
 
@@ -36,7 +37,7 @@
       <button id="b-send-vendor" class="b-vendor">📤 여기가 우리집에 단가 요청 (JPG)</button>
       <button id="b-new">🆕 새 견적</button>
       <button id="b-save" class="b-primary">💾 저장</button>
-      <button id="b-load">📂 불러오기</button>
+      <button id="b-load">🗂 견적 이력</button>
       <span id="b-saved-at" class="b-muted"></span>
     </div>
 
@@ -108,6 +109,15 @@
     <div class="b-card b-order-card"><div id="b-order-req"></div></div>
   </section>
 
+  <!-- 견적 이력 -->
+  <section id="tab-hist" class="b-tab hidden">
+    <div class="b-toolbar">
+      <input id="h-q" type="search" class="b-search" placeholder="현장명·주소·제품명으로 찾기">
+    </div>
+    <p class="b-hint">💾 저장할 때마다 여기에 쌓여요. 같은 견적을 다시 저장하면 이전 내용은 <b>이력</b>으로 남아서 언제든 다시 열 수 있어요 (견적마다 최근 20번). 채우기 링크·사진·🆕 새 견적으로 시작할 때 열려 있던 견적도 자동으로 저장됩니다.<br>※ 이 브라우저에만 저장돼요. 다른 컴퓨터·휴대폰으로 옮기려면 「단가 이력」 탭의 ⬇ 백업 / ⬆ 가져오기를 쓰세요.</p>
+    <div id="b-hist"></div>
+  </section>
+
   <!-- ③ 단가 이력 -->
   <section id="tab-prices" class="b-tab hidden">
     <div class="b-toolbar">
@@ -138,10 +148,10 @@
   </div>
 </div>
 
-<script src="share.js?v=202610212400"></script>
-<script src="vendor-data.js?v=202610212400"></script>
-<script src="bath-data.js?v=202610212400"></script>
-<script src="bath.js?v=202610212400"></script>
-<script src="bath-photo.js?v=202610212400"></script>
+<script src="share.js?v=202610221300"></script>
+<script src="vendor-data.js?v=202610221300"></script>
+<script src="bath-data.js?v=202610221300"></script>
+<script src="bath.js?v=202610221300"></script>
+<script src="bath-photo.js?v=202610221300"></script>
 </body>
 </html>

@@ -508,37 +508,97 @@ function learnPrices() {
   store.set(LS_MY, my);
   return n;
 }
-function saveQuote() {
+// 저장: 견적마다 최신본 + 지난 저장본(이력)을 남김
+const VERS_MAX = 20;
+const hasContent = st => !!(st && ((st.lines || []).some(l => l.n) || (st.req || []).some(r => r.n)));
+const qTitle = x => x.site || x.addr || '(현장명 없음)';
+function saveQuote(silent) {
   const list = store.get(LS_QUOTES, []);
   if (!curId) curId = 'q' + Date.now();
-  const rec = { id: curId, at: new Date().toISOString(), site: S.info.site, date: S.info.date, total: orderRows().total, S };
+  const now = new Date().toISOString();
   const k = list.findIndex(x => x.id === curId);
-  if (k >= 0) list[k] = rec; else list.unshift(rec);
-  const ok = store.set(LS_QUOTES, list);
+  const old = k >= 0 ? list[k] : null;
+  const snap = JSON.parse(JSON.stringify(S));
+  const total = orderRows().total, n = S.lines.filter(l => l.n).length + S.req.filter(r => r.n).length;
+  const vers = old ? (old.vers || []) : [];
+  if (old && JSON.stringify(old.S) !== JSON.stringify(snap)) vers.unshift({ at: old.at, total: old.total, n: old.n, S: old.S });
+  const rec = { id: curId, created: old ? (old.created || old.at) : now, at: now, site: S.info.site, addr: S.info.addr, date: S.info.date, total, n, S: snap, vers: vers.slice(0, VERS_MAX) };
+  if (k >= 0) list.splice(k, 1);
+  list.unshift(rec);   // 최근 저장한 견적이 맨 위
+  let ok = store.set(LS_QUOTES, list);
+  if (!ok) {   // 저장 공간이 차면 오래된 이력부터 줄임
+    list.forEach(x => { if (x.vers && x.vers.length > 3) x.vers = x.vers.slice(0, 3); });
+    ok = store.set(LS_QUOTES, list);
+  }
   const learned = learnPrices();
-  buildCatalog(); buildReqCatalog(); saveDraft(); renderLines(); renderReq();
-  $('#b-saved-at').textContent = ok ? `저장됨 ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}${learned ? ` · 새 단가 ${learned}개를 「내 단가」로 기억` : ''}` : '저장 실패 (브라우저 저장 공간이 막혀 있어요)';
+  buildCatalog(); buildReqCatalog(); saveDraft();
+  if (!silent) { renderLines(); renderReq(); }
+  $('#b-saved-at').textContent = ok ? `저장됨 ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}${vers.length ? ` · 이력 ${vers.length + 1}번째` : ''}${learned ? ` · 새 단가 ${learned}개를 「내 단가」로 기억` : ''}` : '저장 실패 (브라우저 저장 공간이 꽉 찼어요 — 이력 탭에서 안 쓰는 견적을 지워 주세요)';
+  if (!$('#tab-hist').classList.contains('hidden')) renderHist();
+  return ok;
 }
-function openLoad() {
-  const list = store.get(LS_QUOTES, []);
-  $('#b-modal-title').textContent = '📂 저장된 견적';
-  $('#b-modal-body').innerHTML = list.length ? `<div class="q-list">${list.map(x => `<div class="q-item">
-      <div class="t"><b>${esc(x.site || '(현장명 없음)')}</b><small>${esc(x.date || '')} · 원가 ${won(x.total)}원 · 저장 ${new Date(x.at).toLocaleString('ko-KR')}</small></div>
-      <button class="go" data-go="${x.id}">열기</button><button data-del="${x.id}">삭제</button></div>`).join('')}</div>`
-    : '<p class="b-hint">저장된 견적이 없어요. 💾 저장을 누르면 이 브라우저에 저장됩니다.</p>';
-  $('#b-modal-body').querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
-    const x = list.find(y => y.id === b.dataset.go); S = migrate(JSON.parse(JSON.stringify(x.S))); curId = x.id;
-    saveDraft(); closeModal(); renderAll(); $('#b-saved-at').textContent = '불러옴: ' + (x.site || '');
+// 지금 견적에 내용이 있으면 이력에 저장해 두고 새 견적으로
+// 열어 둔 내용이 이미 저장된 것(최신본이나 이력)과 같으면 다시 저장하지 않음
+function autoSave() {
+  if (!hasContent(S)) return;
+  const rec = curId && store.get(LS_QUOTES, []).find(x => x.id === curId);
+  if (rec) { const cur = JSON.stringify(S); if (JSON.stringify(rec.S) === cur || (rec.vers || []).some(v => JSON.stringify(v.S) === cur)) return; }
+  saveQuote(true);
+}
+function startFresh() {
+  autoSave();
+  S = blankState(); curId = null; saveDraft();
+}
+function openQuote(rec, ver) {
+  if (curId !== rec.id || ver) autoSave();
+  const src = ver ? ver.S : rec.S;
+  S = migrate(JSON.parse(JSON.stringify(src))); curId = rec.id;
+  saveDraft(); renderAll(); showTab('form');
+  $('#b-saved-at').textContent = ver ? `지난 저장본(${new Date(ver.at).toLocaleString('ko-KR')})을 열었어요 — 💾 저장하면 이 내용이 최신본이 됩니다` : `불러옴: ${qTitle(rec)}`;
+}
+function openLoad() { showTab('hist'); }
+function renderHist() {
+  const host = $('#b-hist'); if (!host) return;
+  const q = ($('#h-q').value || '').trim().toLowerCase();
+  const list = store.get(LS_QUOTES, []).filter(x => !q || [x.site, x.addr, x.date, ...(x.S ? x.S.lines.map(l => l.n) : [])].join(' ').toLowerCase().includes(q));
+  const fmt = t => t ? new Date(t).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  host.innerHTML = list.length ? list.map(x => `<div class="h-card${x.id === curId ? ' cur' : ''}">
+      <div class="h-main">
+        <div class="h-t"><b>${esc(qTitle(x))}</b>${x.id === curId ? '<span class="h-now">지금 여는 중</span>' : ''}</div>
+        <div class="h-s">${x.site && x.addr ? esc(x.addr) + ' · ' : ''}일자 ${esc(x.date || '-')} · 품목 ${x.n ?? '-'}개 · 원가 ${won(x.total)}원</div>
+        <div class="h-s">마지막 저장 ${fmt(x.at)} · 저장 ${(x.vers || []).length + 1}회${x.S && x.S.vendor ? ' · 📥 업체 견적 반영' : ''}</div>
+      </div>
+      <div class="h-btns">
+        <button class="go" data-open="${x.id}">열기</button>
+        ${(x.vers || []).length ? `<button data-vers="${x.id}">이력 ${(x.vers || []).length}</button>` : ''}
+        <button data-copy="${x.id}">복사해서 새 견적</button>
+        <button data-del="${x.id}" class="h-del">삭제</button>
+      </div>
+      <div class="h-vers hidden" data-vlist="${x.id}">
+        <div class="h-ver"><span>${fmt(x.at)} <small>(최신)</small></span><span>품목 ${x.n ?? '-'} · ${won(x.total)}원</span><button data-open="${x.id}">열기</button></div>
+        ${(x.vers || []).map((v, k) => `<div class="h-ver"><span>${fmt(v.at)}</span><span>품목 ${v.n ?? '-'} · ${won(v.total)}원</span><button data-ver="${x.id}:${k}">이 저장본 열기</button></div>`).join('')}
+      </div>
+    </div>`).join('')
+    : `<p class="b-hint">${q ? '검색 결과가 없어요.' : '저장된 견적이 없어요. 견적서 탭에서 💾 저장을 누르면 여기에 쌓입니다.'}</p>`;
+  const all = store.get(LS_QUOTES, []), byId = id => all.find(y => y.id === id);
+  host.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openQuote(byId(b.dataset.open)));
+  host.querySelectorAll('[data-ver]').forEach(b => b.onclick = () => { const [id, k] = b.dataset.ver.split(':'); const r = byId(id); openQuote(r, r.vers[Number(k)]); });
+  host.querySelectorAll('[data-vers]').forEach(b => b.onclick = () => host.querySelector(`[data-vlist="${b.dataset.vers}"]`).classList.toggle('hidden'));
+  host.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
+    const r = byId(b.dataset.copy); autoSave();
+    S = migrate(JSON.parse(JSON.stringify(r.S))); delete S.vendor; delete S.qid; S.info.date = today(); curId = null;
+    saveDraft(); renderAll(); showTab('form'); $('#b-saved-at').textContent = `「${qTitle(r)}」을 복사한 새 견적이에요 (아직 저장 안 됨)`;
   });
-  $('#b-modal-body').querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
-    if (!confirm('이 견적을 삭제할까요?')) return;
-    store.set(LS_QUOTES, list.filter(y => y.id !== b.dataset.del)); openLoad();
+  host.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+    const r = byId(b.dataset.del);
+    if (!confirm(`「${qTitle(r)}」 견적과 이력을 모두 지울까요?`)) return;
+    store.set(LS_QUOTES, all.filter(y => y.id !== r.id)); if (curId === r.id) curId = null; saveDraft(); renderHist();
   });
-  $('#b-modal').classList.remove('hidden');
 }
 function newQuote() {
-  if (S.lines.some(l => l.n) && !confirm('지금 견적을 비우고 새로 시작할까요? (저장 안 한 내용은 사라집니다)')) return;
-  S = blankState(); curId = null; saveDraft(); renderAll(); $('#b-saved-at').textContent = '';
+  const had = hasContent(S);
+  startFresh(); renderAll();
+  $('#b-saved-at').textContent = had ? '이전 견적은 「🗂 견적 이력」에 저장했어요. 새 견적이에요.' : '';
 }
 function backup() {
   const data = { kind: 'bath-backup', at: new Date().toISOString(), quotes: store.get(LS_QUOTES, []), my: store.get(LS_MY, {}) };
@@ -980,8 +1040,9 @@ const toQty = v => { if (v === '' || v == null) return ''; const m = String(v).r
 let UNDO = null;
 function applyFill(data) {
   if (!data || typeof data !== 'object') throw new Error('내용이 비어 있어요');
-  UNDO = JSON.stringify(S);
-  const res = { bath: 0, req: 0, noPrice: [], skipped: [] };
+  UNDO = JSON.stringify({ S, curId });
+  const res = { bath: 0, req: 0, noPrice: [], skipped: [], fresh: false };
+  if (hasContent(S)) { startFresh(); res.fresh = true; }   // 사진·링크는 새 견적으로 (지금 견적은 이력에 저장)
   const info = data.info || {};
   if (info.date && /^\d{4}-\d{2}-\d{2}$/.test(info.date)) S.info.date = info.date;
   ['shop', 'tel', 'addr', 'site', 'memo'].forEach(k => { if (info[k]) S.info[k] = String(info[k]); });
@@ -1024,7 +1085,7 @@ function applyFill(data) {
   ensureReq(S); saveDraft(); renderAll();
   return res;
 }
-function undoFill() { if (!UNDO) return false; S = JSON.parse(UNDO); UNDO = null; saveDraft(); renderAll(); return true; }
+function undoFill() { if (!UNDO) return false; const u = JSON.parse(UNDO); if (u.S) { S = u.S; curId = u.curId; } else S = u; UNDO = null; saveDraft(); renderAll(); return true; }
 window.BATH = {
   applyFill, undoFill, showTab,
   get state() { return S; },
@@ -1036,10 +1097,11 @@ window.BATH = {
 /* ───────── 탭 / 시작 ───────── */
 function showTab(t) {
   document.querySelectorAll('.b-tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
-  ['form', 'req', 'order', 'prices'].forEach(x => $('#tab-' + x).classList.toggle('hidden', x !== t));
+  ['form', 'req', 'order', 'prices', 'hist'].forEach(x => $('#tab-' + x).classList.toggle('hidden', x !== t));
   closeAC();
-  $('#b-total-bar').classList.toggle('hidden', t === 'prices');
+  $('#b-total-bar').classList.toggle('hidden', t === 'prices' || t === 'hist');
   if (t === 'prices') renderPrices();
+  if (t === 'hist') renderHist();
   try { if (!/^#(fill|reply)=/.test(location.hash)) history.replaceState(null, '', '#' + t); } catch (e) {}
 }
 function renderAll() { buildReqCatalog(); renderVendorBanner(); renderInfo(); ['site', 'addr', 'date'].forEach(syncInfo); renderLines(); renderReq(); renderOrder(); }
@@ -1074,5 +1136,6 @@ renderAll();
 const start = (location.hash || '').slice(1);
 $('#b-send-vendor').onclick = downloadVendorJpg;
 if (start.startsWith('reply=')) receiveVendor(start.slice(6));
-showTab(['form', 'req', 'order', 'prices'].includes(start) ? start : 'form');
+showTab(['form', 'req', 'order', 'prices', 'hist'].includes(start) ? start : 'form');
+$('#h-q').oninput = renderHist;
 })();
