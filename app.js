@@ -1723,6 +1723,7 @@ function saveQuote() {
     loadSavedList();
     if (typeof qlRefreshBar === 'function') qlRefreshBar();
     showToast((prev ? '💾 덮어써서 저장: ' : '💾 저장 완료: ') + snap.label);
+    if (typeof qcAfterSave === 'function') qcAfterSave();
   } catch(e) {
     alert('저장 실패: ' + e.message);
   }
@@ -1796,6 +1797,7 @@ function deleteQuote(key) {
   if (currentQuoteKey === key) currentQuoteKey = null;
   loadSavedList();
   if (typeof qlRefreshBar === 'function') qlRefreshBar();
+  if (typeof qcAfterDelete === 'function') qcAfterDelete(key);
 }
 
 /* ── URL 공유 ── */

@@ -1755,3 +1755,20 @@ body.sheet-mode .wrap { max-width: 1680px; padding-left: 16px; padding-right: 16
 .ql-n { text-align: right; white-space: nowrap; }
 .ql-meta { margin-top: 4px; font-size: 12px; color: #6b7280; }
 .ql-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #374151; }
+.xs-cloud { padding: 7px 12px; border: 1px dashed #6b7280; border-radius: 5px; background: #fff; color: #374151; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.xs-cloud.on { border-style: solid; border-color: #0e7490; color: #0e7490; background: #ecfeff; }
+.xs-cloud.bad { border-color: #b91c1c; color: #b91c1c; background: #fef2f2; }
+.ql-foot a { color: #1f3864; font-weight: 700; }
+.modal-box.modal-qc { max-width: 600px; background: #fff; color: #111; }
+.qc-body { padding: 14px 18px 18px; font-size: 13px; }
+.qc-hint { margin: 6px 0; color: #374151; font-size: 12.5px; line-height: 1.6; }
+.qc-guide { margin: 10px 0 12px; }
+.qc-guide summary { cursor: pointer; font-weight: 700; }
+.qc-guide ol { margin: 8px 0 6px 20px; display: flex; flex-direction: column; gap: 6px; }
+.qc-guide a { color: #1d4ed8; }
+.qc-guide code { background: #f3f4f6; padding: 0 4px; border-radius: 3px; }
+.qc-f { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-top: 8px; }
+.qc-f input { flex: 1; min-width: 0; padding: 7px 9px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; background: #fff; color: #111; }
+.qc-btns { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.qc-btns button { font: inherit; padding: 9px 14px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; color: #111; cursor: pointer; }
+.qc-btns .go { flex: 1; background: #0e7490; border-color: #0e7490; color: #fff; font-weight: 800; }
