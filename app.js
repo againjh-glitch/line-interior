@@ -1710,7 +1710,9 @@ function applySnapshot(snap) {
 let currentQuoteKey = null;
 function saveQuote() {
   const name = document.getElementById('clientName').value || '견적';
-  const prev = currentQuoteKey && localStorage.getItem(currentQuoteKey) ? JSON.parse(localStorage.getItem(currentQuoteKey)) : null;
+  // 지금 견적에 덮어쓰기 — 단, 고객명이 바뀌었으면 다른 고객 견적이므로 새로 저장 (덮어써서 잃어버리지 않게)
+  let prev = currentQuoteKey && localStorage.getItem(currentQuoteKey) ? JSON.parse(localStorage.getItem(currentQuoteKey)) : null;
+  if (prev && (prev.clientName || '').trim() !== (document.getElementById('clientName').value || '').trim()) prev = null;
   const key  = prev ? currentQuoteKey : 'quote_' + Date.now();
   const snap = getSnapshot();
   snap.label = name + ' (' + new Date().toLocaleDateString('ko-KR') + ')';
