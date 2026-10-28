@@ -1706,15 +1706,21 @@ function applySnapshot(snap) {
 }
 
 /* ── 로컬 저장 ── */
+// 지금 열려 있는 저장 견적 (저장하면 같은 견적에 덮어씀, 새로 작성하면 null)
+let currentQuoteKey = null;
 function saveQuote() {
   const name = document.getElementById('clientName').value || '견적';
-  const key  = 'quote_' + Date.now();
+  const prev = currentQuoteKey && localStorage.getItem(currentQuoteKey) ? JSON.parse(localStorage.getItem(currentQuoteKey)) : null;
+  const key  = prev ? currentQuoteKey : 'quote_' + Date.now();
   const snap = getSnapshot();
   snap.label = name + ' (' + new Date().toLocaleDateString('ko-KR') + ')';
+  snap.createdAt = prev?.createdAt || prev?.ts || Date.now();
   try {
     localStorage.setItem(key, JSON.stringify(snap));
+    currentQuoteKey = key;
     loadSavedList();
-    showToast('💾 저장 완료: ' + snap.label);
+    if (typeof qlRefreshBar === 'function') qlRefreshBar();
+    showToast((prev ? '💾 덮어써서 저장: ' : '💾 저장 완료: ') + snap.label);
   } catch(e) {
     alert('저장 실패: ' + e.message);
   }
@@ -1776,6 +1782,8 @@ function loadQuote(key) {
   const snap = JSON.parse(localStorage.getItem(key) || 'null');
   if (!snap) { alert('불러오기 실패'); return; }
   applySnapshot(snap);
+  currentQuoteKey = key;
+  if (typeof qlRefreshBar === 'function') qlRefreshBar();
   document.getElementById('load-modal').classList.add('hidden');
   showToast('📂 불러오기 완료: ' + snap.label);
 }
@@ -1783,7 +1791,9 @@ function loadQuote(key) {
 function deleteQuote(key) {
   if (!confirm('이 견적을 삭제할까요?')) return;
   localStorage.removeItem(key);
+  if (currentQuoteKey === key) currentQuoteKey = null;
   loadSavedList();
+  if (typeof qlRefreshBar === 'function') qlRefreshBar();
 }
 
 /* ── URL 공유 ── */

@@ -1708,3 +1708,50 @@ body.sheet-mode .wrap { max-width: 1680px; padding-left: 16px; padding-right: 16
 .xs-table .c-tot { width: 110px; } .xs-table .c-base { width: 96px; } .xs-table .c-ox { width: 60px; }
 .xs-table .c-cost { width: 92px; } .xs-table .c-memo { width: 190px; } .xs-table .c-note { width: 150px; }
 .xs-scroll > .xs-table { min-width: 1140px; }
+
+/* ── 💾 저장 · 📝 새로 작성 · 📂 저장된 견적서 (quotes.js) ── */
+.xs-qbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; padding: 8px 10px; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; }
+.xs-qbtn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid #1f3864; border-radius: 5px; background: #fff; color: #1f3864; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.xs-qbtn:hover { background: #eef2f7; }
+.xs-qbtn.save { background: #1f3864; color: #fff; }
+.xs-qbtn.save:hover { background: #162a4d; }
+.xs-qn { min-width: 20px; padding: 0 6px; border-radius: 10px; background: #1f3864; color: #fff; font-size: 11px; text-align: center; }
+.xs-qstat { margin-left: auto; font-size: 12.5px; color: #374151; }
+.xs-qstat.on b { color: #111; }
+.xs-qstat small { color: #6b7280; margin-left: 4px; }
+@media (max-width: 700px) { .xs-qstat { margin-left: 0; width: 100%; } }
+
+.modal-box.modal-ql { max-width: 760px; max-height: 90vh; display: flex; flex-direction: column; background: #fff; color: #111; }
+.ql-body { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.ql-top { display: flex; gap: 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
+.ql-search { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; font-size: 14px; background: #fff; color: #111; }
+.ql-count { font-size: 12px; color: #6b7280; white-space: nowrap; }
+.ql-list { overflow-y: auto; padding: 10px 16px; flex: 1; }
+.ql-empty { padding: 30px 0; text-align: center; color: #6b7280; font-size: 13px; }
+.ql-item { border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; background: #fff; }
+.ql-item.cur { border-color: #1f3864; box-shadow: 0 0 0 1px #1f3864 inset; }
+.ql-row { display: flex; gap: 12px; padding: 10px 12px 6px; cursor: pointer; }
+.ql-main { flex: 1; min-width: 0; }
+.ql-name { font-weight: 800; font-size: 15px; }
+.ql-cur { margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: #1f3864; color: #fff; font-size: 11px; font-weight: 700; }
+.ql-sub { font-size: 12.5px; color: #374151; margin-top: 2px; }
+.ql-tpl { color: #1f3864; font-weight: 600; }
+.ql-date { font-size: 11.5px; color: #6b7280; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ql-amt { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ql-amt b { font-size: 15px; }
+.ql-amt small { display: block; font-size: 11px; color: #6b7280; }
+.ql-btns { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 12px 10px; }
+.ql-b { padding: 5px 10px; border: 1px solid #d1d5db; border-radius: 5px; background: #fff; color: #111; font: inherit; font-size: 12.5px; cursor: pointer; }
+.ql-b:hover { border-color: #1f3864; color: #1f3864; }
+.ql-b.go { background: #1f3864; border-color: #1f3864; color: #fff; font-weight: 700; }
+.ql-b.del { margin-left: auto; color: #b91c1c; }
+.ql-prev { margin: 4px 12px 6px; }
+.ql-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.ql-tbl th, .ql-tbl td { border: 1px solid #e5e7eb; padding: 4px 8px; vertical-align: top; }
+.ql-tbl th { background: #1f3864; color: #fff; font-weight: 700; }
+.ql-tbl tfoot td { background: #f3f4f6; font-weight: 600; }
+.ql-c { white-space: nowrap; font-weight: 700; }
+.ql-i { color: #374151; }
+.ql-n { text-align: right; white-space: nowrap; }
+.ql-meta { margin-top: 4px; font-size: 12px; color: #6b7280; }
+.ql-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #374151; }
