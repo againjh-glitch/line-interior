@@ -71,6 +71,8 @@ function tplPack(t) {
   });
   return {
     key: t.key, packed: 1, feeRate: t.feeRate,
+    // 이름·근거를 바꾼 견적(예: 엑셀에서 옮긴 현장)은 그 이름 그대로
+    ...(t.name !== base.name ? { nm: t.name } : {}), ...(t.basis !== base.basis ? { bs: t.basis } : {}), ...(t.pyung !== base.pyung ? { py: t.pyung } : {}),
     // [켜짐, 금액] + 원가·상세내역이 기본값과 다르면 [.., 원가, 상세내역]
     b: t.blocks.map((bl, bi) => bl.items.map((i, ii) => {
       const bi0 = base.blocks[bi]?.items[ii] || {};
@@ -95,6 +97,7 @@ function tplUnpack(t) {
   if (!base) return null;
   const s = tplFromTemplate(base);
   s.feeRate = t.feeRate || 0;
+  if (t.nm) s.name = t.nm; if (t.bs) s.basis = t.bs; if (t.py) s.pyung = t.py;
   s.blocks.forEach((bl, bi) => bl.items.forEach((i, ii) => {
     const v = t.b?.[bi]?.[ii]; if (v) { i.on = !!v[0]; i.p = v[1]; if (v.length > 2) { i.c = v[2]; i.m = v[3] || ''; } }
   }));
