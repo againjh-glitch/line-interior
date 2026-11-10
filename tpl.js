@@ -234,7 +234,7 @@ function renderTpl() {
   }
 
   html += `<div class="tpl-fee">
-    <label>감리비 (업체이윤)
+    <label>현장관리비·일반관리비
       <input type="number" min="0" max="30" step="1" value="${tplState.feeRate}" onchange="tplSetFee(this.value)"> %</label>
     <span>기본 + 옵션 + 특이사항 합계에 붙습니다. 최근 양우 견적(602·502호)은 10% 적용.</span>
   </div>`;

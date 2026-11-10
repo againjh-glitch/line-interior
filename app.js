@@ -1245,7 +1245,7 @@ function calcTotals() {
     const amt = Math.round(baseSub * tplState.feeRate / 100 / 1000) * 1000;
     catMap['기타'] = (catMap['기타']||0) + amt;
     pctSub += amt;
-    rows.push({ catName: '기타', label: '감리비 (업체이윤)', detail:`합계 ${fmt(baseSub)}원의 ${tplState.feeRate}%`, qty:1, u:'식', unitP:amt, amt });
+    rows.push({ catName: '기타', label: '현장관리비 및 일반관리비', detail:`공정관리·현장운영·품질관리 등 — 공사금액의 ${tplState.feeRate}%`, qty:1, u:'식', unitP:amt, amt });
   }
 
   const sub   = baseSub + pctSub;

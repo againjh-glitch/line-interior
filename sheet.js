@@ -158,7 +158,7 @@ function renderSheet() {
     <table class="xs-totals">
       <tr><th>할인 / 네고 (마이너스로 입력)</th><td class="xs-in xs-num"><input class="xs-money" id="xs-nego" type="text" inputmode="numeric"
         value="${negoAmt ? '-' + fmt(negoAmt) : '0'}" onfocus="this.select()" onchange="xsNego(this.value)" aria-label="할인 금액"></td><td></td></tr>
-      <tr><th>감리비 (업체이윤) = (A+B+C) × 이윤율</th><td class="xs-num" id="xs-fee"></td>
+      <tr><th>현장관리비·일반관리비 = (A+B+C) × 관리비율</th><td class="xs-num" id="xs-fee"></td>
         <td class="xs-in xs-ratecell"><input id="xs-rate" type="number" min="0" max="30" step="1" value="${tplState.feeRate || 0}" onchange="xsRate(this.value)" aria-label="이윤율"> % <small>← 이윤율</small></td></tr>
       <tr class="xs-sub"><th>총 공사 금액 (현금 기준, 부가세 별도)</th><td class="xs-num" id="xs-total"></td><td></td></tr>
       <tr><th>부가세 (영수증·계산서·카드 +10%)</th><td class="xs-num" id="xs-vat"></td><td></td></tr>
