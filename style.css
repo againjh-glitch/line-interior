@@ -1772,3 +1772,7 @@ body.sheet-mode .wrap { max-width: 1680px; padding-left: 16px; padding-right: 16
 .qc-btns { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .qc-btns button { font: inherit; padding: 9px 14px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; color: #111; cursor: pointer; }
 .qc-btns .go { flex: 1; background: #0e7490; border-color: #0e7490; color: #fff; font-weight: 800; }
+.xs-dupnote { margin: 6px 0 0; font-size: 12px; color: #6b7280; }
+.xs-duptoggle { margin-left: 6px; padding: 2px 8px; border: 1px solid #9ca3af; border-radius: 4px; background: #fff; color: #374151; font: inherit; font-size: 11.5px; cursor: pointer; }
+tr.dup td { opacity: .6; }
+.xs-dup { color: #b45309; font-weight: 700; }

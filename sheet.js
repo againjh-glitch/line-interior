@@ -78,7 +78,10 @@ function renderSheet() {
   }).join('')).join('');
 
   // ── Ⅱ. 선택 옵션
-  const optRows = tplState.options.map((o, oi) => `<tr class="xs-row${o.on ? '' : ' off'}" data-k="o" data-i="${oi}">
+  // 기본 공사에 이미 들어 있는 옵션(예: 샷시를 기본에 넣었는데 옵션에도 「샷시 전체 교체」)은 숨김 — 적용(O)한 옵션은 그대로 보임
+  const dupOf = tplState.options.map(o => o.on ? null : xsOptDup(o));
+  const hidden = tplState.options.filter((o, oi) => dupOf[oi]);
+  const optRows = tplState.options.map((o, oi) => dupOf[oi] && !xsShowDupOpts ? '' : `<tr class="xs-row${o.on ? '' : ' off'}${dupOf[oi] ? ' dup' : ''}" data-k="o" data-i="${oi}">
       <td class="xs-proc sm">선택</td>
       <td class="xs-item">${esc(o.n)}${typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${o.bd ? ' on' : ''}" onclick="openBreakdown('o',-1,${oi})" title="자재·인건비 내역으로 계산">${o.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
       <td class="xs-desc">${esc(o.d)}</td>
@@ -86,8 +89,10 @@ function renderSheet() {
       <td class="xs-in xs-num">${money(o.p, `xsOptAmt(${oi},this.value)`, o.n + ' 참고 금액')}</td>
       <td class="xs-in xs-oxcell">${ox(o.on, `xsOptOX(${oi},this.value)`)}</td>
       ${costIn('o', -1, oi, o, o.n)}
-      <td class="xs-note">${esc(o.f)}</td>
+      <td class="xs-note">${dupOf[oi] ? `<b class="xs-dup">기본 공사 「${esc(dupOf[oi])}」에 있음</b> · ` : ''}${esc(o.f)}</td>
     </tr>`).join('');
+  const dupNote = hidden.length ? `<p class="xs-dupnote">기본 공사에 이미 있어서 숨긴 옵션 ${hidden.length}개: ${hidden.map(o => esc(o.n)).join(', ')}
+      <button class="xs-duptoggle" onclick="xsShowDupOpts=!xsShowDupOpts;renderTpl()">${xsShowDupOpts ? '숨기기' : '보이기'}</button></p>` : '';
 
   // ── Ⅲ. 특이사항
   const spRows = specials.map((s, i) => `<tr class="xs-row${Number(s.q) > 0 ? '' : ' idle'}" data-k="s" data-i="${i}">
@@ -135,7 +140,7 @@ function renderSheet() {
       <thead><tr><th>구분</th><th>항목</th><th>내용</th><th>견적가</th><th>참고 금액</th><th>적용(O/X)</th><th class="xs-int">원가 🔒</th><th class="xs-int">상세내역 🔒</th><th>포함 빈도 · 근거</th></tr></thead>
       <tbody>${optRows}</tbody>
       <tfoot><tr class="xs-sub"><td colspan="3">B. 선택 옵션 소계</td><td class="xs-num" id="xs-B"></td><td colspan="2"></td><td class="xs-num xs-int" id="xs-B-cost"></td><td colspan="2" class="xs-int" id="xs-B-margin"></td></tr></tfoot>
-    </table></div>
+    </table>${dupNote}</div>
 
     <h3 class="xs-sec">Ⅲ. 특이사항 (현장 조건) <span>— 해당하는 줄에 수량만 넣으세요</span></h3>
     <p class="xs-hint">자주 나오는 항목은 미리 넣어 두었습니다 (수량 비우면 0원). 다른 항목은 「+ 줄 추가」 후 항목 칸에서 목록을 고르거나 직접 입력하세요. 목록에서 고르면 단가·단위가 자동으로 들어옵니다.</p>
@@ -233,6 +238,32 @@ function xsFill() {
   setH('xs-profit', cost ? `🔒 <b>내부 확인</b> · 원가 합 ${fmt(cost)}원 → 예상 이익 <b>${fmt(t.subAfterNego - cost)}원</b> (현금가 기준 마진 ${xsPct(t.subAfterNego, cost)})${miss ? ` · <span class="xs-miss">원가 비어 있는 공정 ${miss}곳</span>` : ''}<small>특이사항은 원가에 안 들어감</small>` : '');
   set('xs-total', t.subAfterNego); set('xs-vat', t.vatAfterNego); set('xs-grand', t.totalAfterNego);
   ['deposit', 'mid', 'final'].forEach(k => set('xs-pay-' + k, Math.round(t.totalAfterNego * payRatio[k] / 100)));
+}
+let xsShowDupOpts = false;
+// 옵션이 기본 공사에 이미 있는지 — 있으면 그 공정·항목 이름을 돌려줌
+//  ① 옵션 첫 단어가 공정 이름 (예: 「샷시 전체 교체」 ↔ 샷시 공정)
+//  ② 항목 이름의 단어가 모두 옵션 이름에 있음 (예: 「붙박이·수납장」 ↔ 붙박이장, 욕실 수납장은 제외)
+//  ③ 다른 이름으로 들어가는 것 (중문 ↔ 현관, 도어락 ↔ 인터폰·비디오폰)
+const XS_OPT_STOP = /^(전체|교체|설치|추가|시공|기본|일반|및)$/;
+const XS_OPT_ALIAS = { '중문': ['중문', /^현관$/], '도어락': ['도어락', '인터폰', '비디오폰'] };
+const xsWords = t => String(t || '').split(/[\s·,/()+]+/).map(w => w.replace(/장$/, '')).filter(w => w.length >= 2 && !XS_OPT_STOP.test(w));
+function xsOptDup(o) {
+  const ow = xsWords(o.n);
+  if (!ow.length) return null;
+  const alias = XS_OPT_ALIAS[String(o.n).trim()];
+  for (const b of tplState.blocks) {
+    if (!b.items.some(i => i.on)) continue;
+    const pw = xsWords(b.proc);
+    if (pw.includes(ow[0]) && pw.every(w => ow.includes(w))) return b.proc;
+    const bath = /욕실|화장실/.test(b.proc) && !/욕실|화장실/.test(o.n);
+    for (const i of b.items) {
+      if (!i.on) continue;
+      if (alias && alias.some(a => a instanceof RegExp ? a.test(i.n.trim()) : i.n.includes(a))) return `${b.proc} › ${i.n}`;
+      const iw = xsWords(i.n);
+      if (!bath && iw.length && iw.every(w => ow.includes(w))) return `${b.proc} › ${i.n}`;
+    }
+  }
+  return null;
 }
 function xsChanged() { xsFill(); calc(); }
 const xsPct = (price, cost) => price > 0 ? Math.round((price - cost) / price * 100) + '%' : '-';
