@@ -1366,6 +1366,31 @@ function renderQuoteDoc(totals) {
     });
   });
   if (!detailHtml) detailHtml = `<tr><td colspan="6" class="empty">선택된 항목이 없습니다.</td></tr>`;
+  // 기본 견적서(시트) 모드: 엑셀 견적서처럼 품명 | 항목 | 내용 | 견적가 (품명 칸·통비용 칸 합침, 단위·수량·단가 없음)
+  const headD = document.getElementById('qitem-head-detail');
+  if (isTplMode) {
+    detailHtml = '';
+    Object.entries(grouped).forEach(([cat, list]) => {
+      const catTotal = list.reduce((s, r) => s + r.amt, 0);
+      list.forEach((r, ri) => {
+        let span = 1;
+        if (!r.incl) while (list[ri + span]?.incl) span++;
+        const merged = r.incl && list.slice(0, ri).some(x => !x.incl);
+        detailHtml += `<tr class="${ri === 0 ? 'qx-first' : ''}">
+          ${ri === 0 ? `<td class="qx-cat" rowspan="${list.length}">${esc(cat)}<span class="qx-cattot">${fmt(catTotal)}</span></td>` : ''}
+          <td class="qx-item">${esc(r.label)}</td>
+          <td class="qx-desc">${esc(r.detail || '')}</td>
+          ${merged ? '' : `<td class="q-amount qx-amt"${span > 1 ? ` rowspan="${span}"` : ''}>${r.incl ? '<span class="q-detail">포함</span>' : fmt(r.amt)}</td>`}
+        </tr>`;
+      });
+    });
+    if (!detailHtml) detailHtml = `<tr><td colspan="4" class="empty">선택된 항목이 없습니다.</td></tr>`;
+  }
+  if (headD) headD.innerHTML = isTplMode
+    ? '<tr><th class="qx-c-cat">품 명</th><th class="qx-c-item">항 목</th><th>내 용</th><th class="qx-c-amt">견적가</th></tr>'
+    : '<tr><th class="col-cat">품명</th><th class="col-name">내용</th><th class="col-unit">단위</th><th class="col-qty">수량</th><th class="col-price">단가</th><th class="col-amount">견적가</th></tr>';
+  document.querySelectorAll('#quote-detail tfoot .qfoot-label').forEach(td => { td.colSpan = isTplMode ? 3 : 5; });
+  document.getElementById('quote-detail')?.classList.toggle('qx', !!isTplMode);
 
   // ── 간략 견적서 tbody ──
   let simpleHtml = '';
