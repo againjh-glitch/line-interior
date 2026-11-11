@@ -1870,3 +1870,5 @@ tfoot .xs-mg { background: #fde9b8 !important; }
 .xs-qtab i { font-style: normal; color: #fbbf24; font-size: 10px; }
 .xs-qtab.more { background: none; border-style: dashed; color: #0e7490; }
 @media print { .xs-qtabs { display: none !important; } }
+/* 품명 칸의 공정 합계·원가·마진은 빼고 이름만 (원가 합·마진 칸에서 봄) */
+.xs-ptot { display: none !important; }
