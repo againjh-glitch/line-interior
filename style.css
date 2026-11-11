@@ -1884,3 +1884,8 @@ tfoot .xs-mg { background: #fde9b8 !important; }
 .qx .qcontract-table { break-inside: avoid; page-break-inside: avoid; }
 /* 견적서라 「상기와 같이 계약합니다 / 계약자 서명」 줄은 뺌 */
 .quote-doc .qdoc-sign { display: none !important; }
+.qpay-head { margin-top: 12px; font-size: 12px; font-weight: 800; color: #1c1917; }
+.qpay-head small { font-size: 10px; font-weight: 500; color: #78716c; }
+.qpay-head + .qcontract-table { margin-top: 4px; }
+.qx .qpay-head { margin-top: 6px; font-size: 9.5px; break-after: avoid; page-break-after: avoid; }
+.qx .qpay-head small { font-size: 8px; }

@@ -185,7 +185,7 @@ async function downloadLineExcel(kind) {
   H(r, 8.25); r++;
   H(r, 78.75); box(`B${r}:H${r}`, { left: 1, right: 1, top: 1, bottom: 1 }); cell(`B${r}`, XL_NOTE, { h: 'left' }); r++;
   H(r, 8.25); r++;
-  H(r, 21); ws.mergeCells(`B${r}:G${r}`); cell(`B${r}`, '상기와 같이 계약합니다. ', { size: 11, h: 'left' });
+  H(r, 21); ws.mergeCells(`B${r}:G${r}`); cell(`B${r}`, '공사대금 지급 안내 (계약 시 지급일 확정)', { size: 11, h: 'left', bold: true });
   for (let c = 2; c <= 8; c++) ws.getCell(r, c).border = { bottom: med }; r++;
   const pay = [['계약금', payRatio.deposit], ['중도금', payRatio.mid], ['잔금', payRatio.final]];
   const R1 = r;
