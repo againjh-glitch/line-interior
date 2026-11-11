@@ -27,7 +27,12 @@ function qlBarHtml() {
     <button class="xs-cloud${qcOn() ? ' on' : ''}" id="xs-cloud" onclick="openCloudSetup()" title="여러 컴퓨터·휴대폰에서 같은 견적 목록">${esc(qcText || (qcOn() ? '☁ 웹 저장' : '☁ 웹 저장 설정'))}</button>
     ${status}`;
 }
-function qlRefreshBar() { const el = document.getElementById('xs-qbar'); if (el) el.innerHTML = qlBarHtml(); }
+function qlRefreshBar() {
+  const el = document.getElementById('xs-qbar'); if (el) el.innerHTML = qlBarHtml();
+  const tb = document.querySelector('.xs-qtabs'), html = qlTabsHtml();
+  if (tb) { if (html) tb.outerHTML = html; else tb.remove(); }
+  else if (html) document.querySelector('.xs-tabs')?.insertAdjacentHTML('afterend', html);
+}
 
 function qlSave() {
   if (!(document.getElementById('clientName').value || '').trim() &&
@@ -323,4 +328,70 @@ document.addEventListener('DOMContentLoaded', () => {
   if (qcOn()) qcSync(); else qcStatus('☁ 웹 저장 설정');
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && qcOn()) qcSync(); });
   document.getElementById('backup-file')?.addEventListener('change', () => setTimeout(qcAfterSave, 800));
+});
+
+/* ═════════ 저장된 견적 탭 + 새로고침해도 보던 견적 그대로 ═════════ */
+const QL_WORK = 'lineWork-v1';
+const QL_TABS_MAX = 12;
+// 저장 견적과 지금 화면이 다른지 (금액·선택·고객 정보)
+function qlCore(s) {
+  if (!s) return '';
+  const { tpl, specials, clientName, clientPhone, clientAddr, clientNote, clientPeriod, negoAmt, payRatio } = s;
+  return JSON.stringify({ tpl, specials, clientName, clientPhone, clientAddr, clientNote, clientPeriod, negoAmt: negoAmt || 0, payRatio });
+}
+function qlDirty() {
+  if (!isTplMode) return false;
+  const now = getSnapshot();
+  if (currentQuoteKey) return qlCore(now) !== qlCore(qlSnap(currentQuoteKey));
+  return !!(now.clientName || now.clientAddr || now.clientPhone);
+}
+function qlTabsHtml() {
+  const keys = qlKeys().slice(0, QL_TABS_MAX);
+  if (!keys.length) return '';
+  const total = qlKeys().length;
+  return `<div class="xs-qtabs" role="tablist" aria-label="저장된 견적">
+    <span class="xs-qtabs-h">📄 저장된 견적</span>
+    ${keys.map(k => {
+      const s = qlSnap(k) || {};
+      const name = (s.clientName || '').replace(/\s*님$/, '') || (s.clientAddr || '').split('/')[0].trim() || '이름 없음';
+      const on = k === currentQuoteKey;
+      return `<button class="xs-qtab${on ? ' on' : ''}" onclick="qlTabOpen('${k}')" title="${esc([s.clientAddr, '저장 ' + qlDate(s.ts)].filter(Boolean).join(' · '))}">${esc(name)}${on && qlDirty() ? ' <i>●</i>' : ''}</button>`;
+    }).join('')}
+    ${total > QL_TABS_MAX ? `<button class="xs-qtab more" onclick="openQuoteList()">+${total - QL_TABS_MAX} 더보기</button>` : ''}
+  </div>`;
+}
+function qlTabOpen(k) {
+  if (k === currentQuoteKey) return;
+  if (qlDirty() && !confirm('지금 견적에 저장하지 않은 변경이 있어요. 그래도 다른 견적을 열까요?\n(먼저 💾 저장을 누르면 남길 수 있어요)')) return;
+  loadQuote(k);
+  qlSaveWork();
+}
+// 화면 상태를 브라우저에 계속 적어 둠 → 새로고침해도 그대로
+let qlWorkTimer = null;
+function qlSaveWork() {
+  clearTimeout(qlWorkTimer);
+  qlWorkTimer = setTimeout(() => {
+    if (!isTplMode || !tplState) return;
+    try { localStorage.setItem(QL_WORK, JSON.stringify({ key: currentQuoteKey, snap: getSnapshot() })); } catch (e) {}
+  }, 400);
+}
+function qlRestoreWork() {
+  let w = null;
+  try { w = JSON.parse(localStorage.getItem(QL_WORK) || 'null'); } catch (e) {}
+  if (!w || !w.snap || w.snap.mode !== 'tpl' || !w.snap.tpl) return false;
+  try {
+    applySnapshot(w.snap);
+    currentQuoteKey = w.key && localStorage.getItem(w.key) ? w.key : null;
+    if (isTplMode) renderTpl();
+    calc(); qlRefreshBar();
+    return true;
+  } catch (e) { console.warn(e); return false; }
+}
+// calc 뒤마다 저장 (금액·O/X·특이사항), 고객 정보 입력도
+const qlCalcOrig = calc;
+calc = function () { const r = qlCalcOrig.apply(this, arguments); qlSaveWork(); return r; };
+document.addEventListener('input', e => { if (e.target.closest?.('#tpl-content, .client-row, .top-section')) qlSaveWork(); });
+window.addEventListener('beforeunload', () => {
+  clearTimeout(qlWorkTimer);
+  if (isTplMode && tplState) try { localStorage.setItem(QL_WORK, JSON.stringify({ key: currentQuoteKey, snap: getSnapshot() })); } catch (e) {}
 });

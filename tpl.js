@@ -602,5 +602,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const w = location.hash.match(/[#&]w=([^&]+)/);
   if (w) openEditLink(w[1]);                                         // 🔗 일반 공유 → 「계산기에서 열어 수정」
   else if (new URLSearchParams(location.search).get('q')) loadFromURL(); // 예전 작업 화면 공유 링크
+  else if (typeof qlRestoreWork === 'function' && qlRestoreWork()) { /* 새로고침 전에 보던 견적 그대로 */ }
   else if (START_MODE === 'tpl') { showMode('tpl'); calc(); }
 });

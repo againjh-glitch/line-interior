@@ -119,6 +119,7 @@ function renderSheet() {
   const lib = getSpLib();
   el.innerHTML = `
   <div class="xs-tabs" role="tablist">${BASE_TEMPLATES.map(tab).join('')}${getUserTemplates().map(tab).join('')}</div>
+  ${typeof qlTabsHtml === 'function' ? qlTabsHtml() : ''}
   <div class="xs-qbar" id="xs-qbar">${typeof qlBarHtml === 'function' ? qlBarHtml() : ''}</div>
   <div class="xs-tools">
     ${typeof openVendor === 'function' ? '<button class="xs-tool-vendor" onclick="openVendor()">📒 업체 단가표</button>' : ''}
