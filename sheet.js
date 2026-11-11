@@ -45,6 +45,9 @@ function renderSheet() {
   // 원가·상세내역 칸 (내부용 — 고객 공유·견적서 출력에는 안 나감)
   const costIn = (k, bi, ii, x, label) => `<td class="xs-in xs-num xs-costcell">${money(x.c == null ? '' : x.c, `xsCost('${k}',${bi},${ii},this.value)`, label + ' 원가')}</td>
       <td class="xs-in xs-memocell"><textarea class="xs-memo" rows="2" onchange="xsMemo('${k}',${bi},${ii},this.value)" aria-label="${esc(label)} 상세내역">${esc(x.m || '')}</textarea></td>`;
+  // 내용(고객에게 보임)·메모(내부용) — 칸에서 바로 고침
+  const descIn = (k, bi, ii, v, label) => `<textarea class="xs-dtext" rows="1" oninput="xsAutoH(this)" onchange="xsDesc('${k}',${bi},${ii},this.value)" aria-label="${esc(label)} 내용">${esc(v || '')}</textarea>`;
+  const noteIn = (k, bi, ii, v, label, hint) => `<textarea class="xs-ntext" rows="1" oninput="xsAutoH(this)" onchange="xsNote('${k}',${bi},${ii},this.value)" placeholder="${esc(hint || '메모')}" title="${esc(hint || '')}" aria-label="${esc(label)} 메모">${esc(v || '')}</textarea>`;
   const money = (v, call, label) => `<input class="xs-money" type="text" inputmode="numeric" value="${v === '' ? '' : fmt(v)}" onfocus="this.select()" onchange="${call}" aria-label="${esc(label)}">`;
 
   // ── 고객 정보
@@ -77,12 +80,12 @@ function renderSheet() {
           ? `<button class="xs-furn-btn vd" onclick="openVendor('바닥재')" title="업체 바닥재 단가에서 고르기">📒 바닥재<br>고르기</button>` : ''}
           <div class="xs-ptot" id="xs-tot-${bi}"></div></td>` : ''}
         <td class="xs-item">${esc(i.n)}${i.p != null && typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${i.bd ? ' on' : ''}" onclick="openBreakdown('b',${bi},${ii})" title="자재·인건비 내역으로 계산">${i.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
-        <td class="xs-desc">${esc(i.d)}</td>
+        <td class="xs-in xs-desc">${descIn('b', bi, ii, i.d, i.n)}</td>
         ${priceCell}
         ${(() => { const [cTd, mTd] = costIn('b', bi, ii, i, i.n).split(/(?<=<\/td>)/);
-          return cTd + (span[ii] ? `<td class="xs-mg xs-int" rowspan="${span[ii]}" id="xs-mg-${bi}-${ii}"></td>` : '') + mTd; })()}
+          return cTd + mTd + (span[ii] ? `<td class="xs-mg xs-int" rowspan="${span[ii]}" id="xs-mg-${bi}-${ii}"></td>` : ''); })()}
         <td class="xs-in xs-oxcell">${ox(i.on, `xsBaseOX(${bi},${ii},this.value)`)}</td>
-        <td class="xs-note">${esc(parts.join(' · '))}${tools}</td>
+        <td class="xs-in xs-note">${noteIn('b', bi, ii, i.note, i.n, parts.filter(x => x !== i.note).join(' · '))}${tools}</td>
       </tr>`;
     }).join('');
   }).join('');
@@ -94,11 +97,11 @@ function renderSheet() {
   const optRows = tplState.options.map((o, oi) => dupOf[oi] && !xsShowDupOpts ? '' : `<tr class="xs-row${o.on ? '' : ' off'}${dupOf[oi] ? ' dup' : ''}" data-k="o" data-i="${oi}">
       <td class="xs-proc sm">선택</td>
       <td class="xs-item">${esc(o.n)}${typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${o.bd ? ' on' : ''}" onclick="openBreakdown('o',-1,${oi})" title="자재·인건비 내역으로 계산">${o.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
-      <td class="xs-desc">${esc(o.d)}</td>
+      <td class="xs-in xs-desc">${descIn('o', -1, oi, o.d, o.n)}</td>
       <td class="xs-in xs-num xs-price">${money(o.p, `xsOptAmt(${oi},this.value)`, o.n + ' 견적가')}</td>
-      ${(() => { const [cTd, mTd] = costIn('o', -1, oi, o, o.n).split(/(?<=<\/td>)/); return cTd + `<td class="xs-mg xs-int" id="xs-mgo-${oi}"></td>` + mTd; })()}
+      ${(() => { const [cTd, mTd] = costIn('o', -1, oi, o, o.n).split(/(?<=<\/td>)/); return cTd + mTd + `<td class="xs-mg xs-int" id="xs-mgo-${oi}"></td>`; })()}
       <td class="xs-in xs-oxcell">${ox(o.on, `xsOptOX(${oi},this.value)`)}</td>
-      <td class="xs-note">${dupOf[oi] ? `<b class="xs-dup">기본 공사 「${esc(dupOf[oi])}」에 있음</b> · ` : ''}${esc(o.f)}</td>
+      <td class="xs-in xs-note">${dupOf[oi] ? `<b class="xs-dup">기본 공사 「${esc(dupOf[oi])}」에 있음</b>` : ''}${noteIn('o', -1, oi, o.note, o.n, o.f)}</td>
     </tr>`).join('');
   const dupNote = hidden.length ? `<p class="xs-dupnote">기본 공사에 이미 있어서 숨긴 옵션 ${hidden.length}개: ${hidden.map(o => esc(o.n)).join(', ')}
       <button class="xs-duptoggle" onclick="xsShowDupOpts=!xsShowDupOpts;renderTpl()">${xsShowDupOpts ? '숨기기' : '보이기'}</button></p>` : '';
@@ -138,18 +141,18 @@ function renderSheet() {
     <h3 class="xs-sec">Ⅰ. 기본 공사 <span>— 안 하는 항목은 적용 칸을 X로 바꾸면 빠집니다</span></h3>
     <p class="xs-hint">🔒 <b>원가·상세내역</b> 칸은 내부용입니다 (고객 공유·견적서 출력에 안 나감). 기존 엑셀 「원가」 열의 중간값을 넣어 두었고, 지난 견적에서 원가가 다른 줄에 몰려 적혀 맞지 않는 공정은 비워 두고 상세내역에 「지난 원가」로 적어 두었어요. 현장마다 고쳐 쓰세요. (상세내역 예: 「2명300+6」, 「목수 6품」, 「2칸 방수 40만」)</p>
     <div class="xs-scroll"><table class="xs-table xs-base">
-      <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-price"><col class="c-cost"><col class="c-mg"><col class="c-memo"><col class="c-ox"><col class="c-note"></colgroup>
-      <thead><tr><th>품명</th><th>항목</th><th>내 용</th><th>견적가<br><small>(고객에게 보임)</small></th><th class="xs-int">원가 🔒</th><th class="xs-int">원가 합 · 마진 🔒<br><small>(견적가 칸마다)</small></th><th class="xs-int">상세내역 🔒</th><th>적용<br>(O/X)</th><th>비고 · 통비용/나눔</th></tr></thead>
+      <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-price"><col class="c-cost"><col class="c-memo"><col class="c-mg"><col class="c-ox"><col class="c-note"></colgroup>
+      <thead><tr><th>품명</th><th>항목</th><th>내 용</th><th>견적가<br><small>(고객에게 보임)</small></th><th class="xs-int">원가 🔒</th><th class="xs-int">상세내역 🔒</th><th class="xs-int">원가 합 · 마진 🔒<br><small>(견적가 칸마다)</small></th><th>적용<br>(O/X)</th><th>메모 🔒</th></tr></thead>
       <tbody>${baseRows}</tbody>
-      <tfoot><tr class="xs-sub"><td colspan="3">A. 기본 공사 소계</td><td class="xs-num" id="xs-A"></td><td class="xs-num xs-int" id="xs-A-cost"></td><td class="xs-mg xs-int" id="xs-A-margin"></td><td></td><td colspan="2"></td></tr></tfoot>
+      <tfoot><tr class="xs-sub"><td colspan="3">A. 기본 공사 소계</td><td class="xs-num" id="xs-A"></td><td class="xs-num xs-int" id="xs-A-cost"></td><td class="xs-int"></td><td class="xs-mg xs-int" id="xs-A-margin"></td><td colspan="2"></td></tr></tfoot>
     </table></div>
 
     <h3 class="xs-sec">Ⅱ. 선택 옵션 <span>— 적용 칸에 O를 넣으면 견적가에 들어갑니다</span></h3>
     <div class="xs-scroll"><table class="xs-table xs-opt">
-      <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-price"><col class="c-cost"><col class="c-mg"><col class="c-memo"><col class="c-ox"><col class="c-note"></colgroup>
-      <thead><tr><th>구분</th><th>항목</th><th>내 용</th><th>견적가</th><th class="xs-int">원가 🔒</th><th class="xs-int">원가 합 · 마진 🔒<br><small>(견적가 칸마다)</small></th><th class="xs-int">상세내역 🔒</th><th>적용<br>(O/X)</th><th>포함 빈도 · 근거</th></tr></thead>
+      <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-price"><col class="c-cost"><col class="c-memo"><col class="c-mg"><col class="c-ox"><col class="c-note"></colgroup>
+      <thead><tr><th>구분</th><th>항목</th><th>내 용</th><th>견적가</th><th class="xs-int">원가 🔒</th><th class="xs-int">상세내역 🔒</th><th class="xs-int">원가 합 · 마진 🔒<br><small>(견적가 칸마다)</small></th><th>적용<br>(O/X)</th><th>메모 🔒</th></tr></thead>
       <tbody>${optRows}</tbody>
-      <tfoot><tr class="xs-sub"><td colspan="3">B. 선택 옵션 소계 <small>(적용 O만)</small></td><td class="xs-num" id="xs-B"></td><td class="xs-num xs-int" id="xs-B-cost"></td><td class="xs-mg xs-int" id="xs-B-margin"></td><td></td><td colspan="2"></td></tr></tfoot>
+      <tfoot><tr class="xs-sub"><td colspan="3">B. 선택 옵션 소계 <small>(적용 O만)</small></td><td class="xs-num" id="xs-B"></td><td class="xs-num xs-int" id="xs-B-cost"></td><td class="xs-int"></td><td class="xs-mg xs-int" id="xs-B-margin"></td><td colspan="2"></td></tr></tfoot>
     </table>${dupNote}</div>
 
     <h3 class="xs-sec">Ⅲ. 특이사항 (현장 조건) <span>— 해당하는 줄에 수량만 넣으세요</span></h3>
@@ -192,6 +195,7 @@ function renderSheet() {
     </div>
   </div></div>`;
   xsFill();
+  requestAnimationFrame(xsAutoAll);
 }
 
 /* ── 숫자 칸 채우기 (다시 그리지 않고 값만 바꿈 → 입력 중인 칸 유지) ── */
@@ -327,6 +331,10 @@ function xsCost(k, bi, ii, v) {
   x.c = String(v).trim() === '' ? null : parseWon(v);
   xsChanged();
 }
+function xsDesc(k, bi, ii, v) { xsLine(k, bi, ii).d = v.trim(); calc(); }
+function xsNote(k, bi, ii, v) { xsLine(k, bi, ii).note = v.trim(); calc(); }
+function xsAutoH(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+function xsAutoAll() { document.querySelectorAll('.xs-table textarea.xs-dtext, .xs-table textarea.xs-ntext').forEach(xsAutoH); }
 function xsMemo(k, bi, ii, v) { xsLine(k, bi, ii).m = v.trim(); calc(); }
 
 /* ── 입력 처리 ── */

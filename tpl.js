@@ -54,7 +54,7 @@ function tplFromTemplate(t) {
         ...(i.bd ? { bd: i.bd, bdOrig: i.bdOrig } : {}),
       })),
     })),
-    options: (t.options || []).map(o => ({ n: o.n, d: o.d || '', p: Number(o.p) || 0, f: o.f || '', on: !!o.on,
+    options: (t.options || []).map(o => ({ n: o.n, d: o.d || '', p: Number(o.p) || 0, f: o.f || '', note: o.note || '', on: !!o.on,
       c: o.c == null || o.c === '' ? null : Number(o.c), m: o.m || '', ...(o.bd ? { bd: o.bd, bdOrig: o.bdOrig } : {}) })),
   };
 }
@@ -77,13 +77,17 @@ function tplPack(t) {
     b: t.blocks.map((bl, bi) => bl.items.map((i, ii) => {
       const bi0 = base.blocks[bi]?.items[ii] || {};
       const v = [i.on ? 1 : 0, i.p];
-      if ((i.c ?? null) !== (bi0.c ?? null) || (i.m || '') !== (bi0.m || '')) v.push(i.c ?? null, i.m || '');
+      const dn = (i.d || '') !== (bi0.d || '') || (i.note || '') !== (bi0.note || '');
+      if (dn || (i.c ?? null) !== (bi0.c ?? null) || (i.m || '') !== (bi0.m || '')) v.push(i.c ?? null, i.m || '');
+      if (dn) v.push(i.d || '', i.note || ''); // 내용·메모를 고친 줄
       return v;
     })),
     o: t.options.map((o, oi) => {
       const o0 = base.options[oi] || {};
       const v = [o.on ? 1 : 0, o.p];
-      if ((o.c ?? null) !== (o0.c ?? null) || (o.m || '') !== (o0.m || '')) v.push(o.c ?? null, o.m || '');
+      const dn = (o.d || '') !== (o0.d || '') || (o.note || '') !== (o0.note || '');
+      if (dn || (o.c ?? null) !== (o0.c ?? null) || (o.m || '') !== (o0.m || '')) v.push(o.c ?? null, o.m || '');
+      if (dn) v.push(o.d || '', o.note || '');
       return v;
     }),
     bx, nb: t.blocks.length, fu: t.furn || null,
@@ -99,9 +103,9 @@ function tplUnpack(t) {
   s.feeRate = t.feeRate || 0;
   if (t.nm) s.name = t.nm; if (t.bs) s.basis = t.bs; if (t.py) s.pyung = t.py;
   s.blocks.forEach((bl, bi) => bl.items.forEach((i, ii) => {
-    const v = t.b?.[bi]?.[ii]; if (v) { i.on = !!v[0]; i.p = v[1]; if (v.length > 2) { i.c = v[2]; i.m = v[3] || ''; } }
+    const v = t.b?.[bi]?.[ii]; if (v) { i.on = !!v[0]; i.p = v[1]; if (v.length > 2) { i.c = v[2]; i.m = v[3] || ''; } if (v.length > 4) { i.d = v[4]; i.note = v[5] || ''; } }
   }));
-  s.options.forEach((o, oi) => { const v = t.o?.[oi]; if (v) { o.on = !!v[0]; o.p = v[1]; if (v.length > 2) { o.c = v[2]; o.m = v[3] || ''; } } });
+  s.options.forEach((o, oi) => { const v = t.o?.[oi]; if (v) { o.on = !!v[0]; o.p = v[1]; if (v.length > 2) { o.c = v[2]; o.m = v[3] || ''; } if (v.length > 4) { o.d = v[4]; o.note = v[5] || ''; } } });
   if (t.nb) s.blocks.length = t.nb; // 공정이 새로 생기거나 빠진 경우 개수 맞춤
   Object.entries(t.bx || {}).forEach(([bi, bl]) => { s.blocks[bi] = bl; });
   s.blocks = s.blocks.filter(Boolean);

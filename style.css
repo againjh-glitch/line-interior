@@ -1889,3 +1889,17 @@ tfoot .xs-mg { background: #fde9b8 !important; }
 .qpay-head + .qcontract-table { margin-top: 4px; }
 .qx .qpay-head { margin-top: 6px; font-size: 9.5px; break-after: avoid; page-break-after: avoid; }
 .qx .qpay-head small { font-size: 8px; }
+
+/* 내용·메모 칸 바로 고치기 (2026-11-11) */
+.xs-table td.xs-desc.xs-in, .xs-table td.xs-note.xs-in { padding: 2px 4px; vertical-align: middle; }
+textarea.xs-dtext, textarea.xs-ntext { display: block; width: 100%; border: 0; background: transparent; font: inherit; resize: none; overflow: hidden;
+  padding: 4px 2px; line-height: 1.4; white-space: pre-wrap; color: inherit; min-height: 24px; }
+textarea.xs-ntext { font-size: 12px; color: #374151; }
+textarea.xs-ntext::placeholder { color: #9ca3af; }
+textarea.xs-dtext:hover, textarea.xs-ntext:hover { background: rgba(37, 99, 235, .05); }
+textarea.xs-dtext:focus, textarea.xs-ntext:focus { outline: 2px solid #2563eb; background: #fff; color: #111827; }
+.xs-note .xs-dup { display: block; font-size: 11px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) textarea.xs-ntext { color: #cbd5e1; }
+  :root:not([data-theme="light"]) textarea.xs-dtext:focus, :root:not([data-theme="light"]) textarea.xs-ntext:focus { background: #0f172a; color: #f1f5f9; } }
+:root[data-theme="dark"] textarea.xs-ntext { color: #cbd5e1; }
+:root[data-theme="dark"] textarea.xs-dtext:focus, :root[data-theme="dark"] textarea.xs-ntext:focus { background: #0f172a; color: #f1f5f9; }
