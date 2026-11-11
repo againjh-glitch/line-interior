@@ -113,7 +113,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // 기본 견적서(시트)는 기존 엑셀 견적서 양식으로 손님용/업체용, 일반 계산기는 예전 엑셀 저장
   document.getElementById('btn-excel').addEventListener('click', () => typeof downloadLineExcel === 'function' ? downloadLineExcel('customer') : downloadExcel());
   document.getElementById('btn-excel-vendor')?.addEventListener('click', () => typeof downloadLineExcel === 'function' ? downloadLineExcel('vendor') : downloadExcel());
-  document.getElementById('btn-print-detail').addEventListener('click', () => { setPrintMode('detail'); window.print(); });
+  document.getElementById('btn-print-detail').addEventListener('click', () => { setPrintMode('detail'); fitDetailPrint(); window.print(); });
+  window.addEventListener('beforeprint', () => { if (printMode === 'detail') fitDetailPrint(); });
+  window.addEventListener('afterprint', () => { const d = document.getElementById('quote-detail'); if (d) d.style.zoom = ''; });
   document.getElementById('btn-print-simple').addEventListener('click', () => { setPrintMode('simple'); window.print(); });
   document.getElementById('btn-save').addEventListener('click', saveQuote);
   document.getElementById('btn-load').addEventListener('click', () => document.getElementById('load-modal').classList.remove('hidden'));
@@ -1424,6 +1426,18 @@ function renderQuoteDoc(totals) {
 
 /* ════════ 인쇄 모드 ════════ */
 let printMode = 'detail';
+// 상세 견적서(기본 견적서 모드)를 A4 2장 안에 들어가게: 인쇄 폭(약 194mm)으로 높이를 재서 넘치면 축소
+function fitDetailPrint() {
+  const d = document.getElementById('quote-detail');
+  if (!d || !d.classList.contains('qx')) { if (d) d.style.zoom = ''; return; }
+  const keep = d.getAttribute('style') || '';
+  d.style.zoom = '';
+  d.style.cssText += ';display:block !important;position:absolute;left:-10000px;top:0;width:733px;padding:0;margin:0;border:0;box-shadow:none;';
+  const h = d.scrollHeight;
+  d.setAttribute('style', keep);
+  const room = 2 * 900; // A4 2장 (위아래 여백 뺀 높이 약 1,058px씩 — 쪽 나눔·글꼴 차이 여유를 둠)
+  d.style.zoom = h > room ? String(Math.max(0.55, Math.floor(room / h * 100) / 100)) : '';
+}
 function setPrintMode(m) {
   printMode = m;
   document.getElementById('quote-detail').classList.toggle('print-hidden', m !== 'detail');
