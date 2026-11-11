@@ -71,7 +71,7 @@ function renderSheet() {
         : i.p == null ? `<td class="xs-price none" rowspan="${span[ii]}"></td>`
         : `<td class="xs-in xs-num xs-price" rowspan="${span[ii]}">${money(i.p, `xsBaseAmt(${bi},${ii},this.value)`, i.n + ' 견적가')}
             ${span[ii] > 1 ? `<div class="xs-grp">${span[ii]}줄 통비용</div>` : ''}</td>`;
-      return `<tr class="xs-row${i.on ? '' : ' x'}${i.p == null ? ' incl' : ''}" data-k="b" data-b="${bi}" data-i="${ii}">
+      return `<tr class="xs-row${i.on ? '' : ' x'}${i.p == null ? ' incl' : ''}${ii === 0 ? ' xs-bstart' : ''}${ii === b.items.length - 1 ? ' xs-bend' : ''}" data-k="b" data-b="${bi}" data-i="${ii}">
         ${ii === 0 ? `<td class="xs-proc" rowspan="${b.items.length}">${esc(b.proc)}${b.proc === '가구' && typeof openFurn === 'function'
           ? `<button class="xs-furn-btn" onclick="openFurn()" title="싱크대·붙박이장 사이즈로 예상 견적">🧮 사이즈로<br>계산</button>` : ''}${b.proc === '도배·바닥재' && typeof openVendor === 'function'
           ? `<button class="xs-furn-btn vd" onclick="openVendor('바닥재')" title="업체 바닥재 단가에서 고르기">📒 바닥재<br>고르기</button>` : ''}

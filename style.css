@@ -1837,3 +1837,9 @@ tr.dup td { opacity: .6; }
   .qx .qcontract-table td { padding: 3px 6px; font-size: 8.5px; }
   .qx .qdoc-footer { margin-top: 6px; padding-top: 4px; font-size: 8px; line-height: 1.5; }
   .qx .qdoc-sign { margin-top: 6px; font-size: 9.5px; }
+
+/* ── 공정(대메뉴)마다 굵은 테두리: 공정이 바뀌는 곳에 진한 선 ── */
+.xs-base { border: 2px solid #1f3864; }
+.xs-base tr.xs-bstart > td { border-top: 2.5px solid #1f3864 !important; }
+.xs-base td.xs-proc { border-left: 2px solid #1f3864 !important; border-right: 2px solid #1f3864 !important; }
+.xs-base tbody tr:last-child > td { border-bottom: 2.5px solid #1f3864 !important; }
