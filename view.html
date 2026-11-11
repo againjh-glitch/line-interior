@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="202611101530">
+<meta name="app-version" content="202611111400">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>견적서 — 라인 인테리어</title>
@@ -54,6 +54,7 @@
   .items .name { font-weight: 600; }
   .items .detail { display: block; margin-top: 2px; font-size: 11.5px; color: var(--tx2); font-weight: 400; line-height: 1.45; }
   .items .incl { color: var(--tx3); font-size: 12px; }
+  .items td.amt.grp { vertical-align: middle; border-left: 1px solid var(--line, #e5e7eb); }
   .items .minus { color: var(--red); }
   .summary-only .line { display: none; }
   .items .meta { font-size: 11.5px; color: var(--tx2); }
@@ -120,7 +121,7 @@
 </div>
 <main id="app"><p class="msg">견적서를 불러오는 중…</p></main>
 
-<script src="share.js?v=202611101530"></script>
+<script src="share.js?v=202611111400"></script>
 <script>
 const won = n => Math.round(n || 0).toLocaleString('ko-KR');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -138,7 +139,7 @@ function render(q) {
   const internal = q.k === 'g';   // 일반 공유(내부 확인용)
   document.title = `${internal ? '[내부] ' : ''}견적서 — ${co.name}${q.c?.name ? ' · ' + q.c.name : ''}`;
   const groups = [];
-  const lineAmounts = internal || !q.cats; // 고객용(새 링크)은 공정 합계만
+  const lineAmounts = internal || !q.cats || q.la; // 예전 고객용 링크(la 없음)는 공정 합계만
   normRows(q).forEach(r => {
     let g = groups.find(x => x.cat === r.cat);
     if (!g) groups.push(g = { cat: r.cat, rows: [], sum: 0, range: '' });
@@ -151,12 +152,20 @@ function render(q) {
   const itemRows = groups.map(g => `
     <tr class="cat"><td>${esc(g.cat)}${internal && g.range ? `<span class="meta-inline">기존 ${esc(g.range)}</span>` : ''}</td>
       <td class="num">${won(q.cats && !internal ? q.cats[g.cat] : g.sum)}</td>${metaCols(g.range ? '기존 ' + esc(g.range) : '', '', '')}</tr>
-    ${g.rows.map(r => `<tr class="line">
+    ${g.rows.map((r, ri) => {
+      // 엑셀처럼 금액 줄 + 아래 「포함」 줄들을 견적가 한 칸으로 합침 (통비용)
+      let span = 1;
+      if (!r.incl) while (g.rows[ri + span]?.incl) span++;
+      const merged = r.incl && ri > 0 && g.rows.slice(0, ri).some(x => !x.incl);
+      const amtCell = !lineAmounts ? '<td class="num"></td>'
+        : merged ? ''
+        : `<td class="num amt ${span > 1 ? 'grp' : ''} ${r.amt < 0 ? 'minus' : ''}"${span > 1 ? ` rowspan="${span}"` : ''}>${r.incl ? '<span class="incl">포함</span>' : won(r.amt)}</td>`;
+      return `<tr class="line">
       <td class="name">${esc(r.label)}${r.detail ? `<span class="detail">${esc(r.detail)}</span>` : ''}
         ${internal && (r.f || r.note) ? `<span class="meta-inline">${[r.f && '포함 ' + esc(r.f), esc(r.note)].filter(Boolean).join(' · ')}</span>` : ''}</td>
-      <td class="num ${r.amt < 0 ? 'minus' : ''}">${!lineAmounts ? '' : r.incl ? '<span class="incl">포함</span>' : won(r.amt)}</td>
+      ${amtCell}
       ${metaCols('', esc(r.f), esc(r.note))}
-    </tr>`).join('')}`).join('');
+    </tr>`; }).join('')}`).join('');
   const p = q.pay || { deposit: 10, mid: 40, final: 50 };
   const part = pct => Math.round(q.total * pct / 100);
 

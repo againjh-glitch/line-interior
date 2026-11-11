@@ -1360,7 +1360,7 @@ function renderQuoteDoc(totals) {
         <td class="q-center">${hideLine ? '' : r.u}</td>
         <td class="q-center">${hideLine ? '' : r.qty}</td>
         <td class="q-price">${up}</td>
-        <td class="q-amount">${hideLine ? '' : r.incl ? '<span class="q-detail">포함</span>' : fmt(r.amt)}</td></tr>`;
+        <td class="q-amount">${r.incl ? '<span class="q-detail">포함</span>' : fmt(r.amt)}</td></tr>`;
     });
   });
   if (!detailHtml) detailHtml = `<tr><td colspan="6" class="empty">선택된 항목이 없습니다.</td></tr>`;
@@ -1526,12 +1526,12 @@ async function downloadExcel() {
 (${item.detail})` : '');
           C(r,2).font  = { name:'맑은 고딕', size:9, color:{argb:'FF27272A'} };
           C(r,2).alignment = { ...alignLC, wrapText:true };
-          const hideLine = isTplMode; // 기본 견적서 모드: 공정별 총 견적가만
+          const hideLine = isTplMode; // 기본 견적서 모드: 단위·수량·단가는 비움 (금액은 보임)
           C(r,3).value = hideLine ? '' : item.u; C(r,3).alignment = alignCC; C(r,3).font = fontNm;
           C(r,4).value = hideLine ? '' : item.qty; C(r,4).alignment = alignCC; C(r,4).font = fontNm;
           C(r,5).value = hideLine || item.incl ? '' : (item.unitP||0); C(r,5).numFmt = numFmt; C(r,5).alignment = alignRC;
           C(r,5).font = { name:'맑은 고딕', size:9, color:{argb:'FF78716C'} };
-          C(r,6).value = hideLine ? '' : item.incl ? '포함' : item.amt; C(r,6).numFmt = numFmt; C(r,6).alignment = alignRC;
+          C(r,6).value = item.incl ? '포함' : item.amt; // 기본 견적서도 엑셀처럼 금액 줄(통비용·나눔)은 보여줌 C(r,6).numFmt = numFmt; C(r,6).alignment = alignRC;
           C(r,6).font = item.amt < 0
             ? { name:'맑은 고딕', size:9, bold:true, color:{argb:'FFDC2626'} }
             : { name:'맑은 고딕', size:9, bold:true, color:{argb:'FF1C1917'} };

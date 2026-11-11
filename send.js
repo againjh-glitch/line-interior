@@ -28,13 +28,13 @@ function buildShareQuote(kind) {
   const v = id => (document.getElementById(id)?.value || '').trim();
   const internal = kind === 'g';
   const q = {
-    v: 2, k: kind,
+    v: 2, k: kind, la: 1,
     co: COMPANY,
     c: { name: v('clientName'), addr: v('clientAddr'), period: v('clientPeriod'), date: v('clientDate'), note: v('clientNote') },
     title: isTplMode && tplState ? tplState.name : '',
     rows: t.rows.map(r => {
-      // 고객용은 줄 금액을 담지 않음 (공정 합계 cats만)
-      const base = [r.catName, r.label, r.detail || '', internal ? (r.amt || 0) : 0, r.incl ? 1 : 0];
+      // 엑셀 견적서처럼: 통비용은 금액 줄에만 금액(아래 「포함」 줄은 같은 칸), 나눠서 받는 줄은 각자 금액 — 원가·상세내역은 안 담음
+      const base = [r.catName, r.label, r.detail || '', r.amt || 0, r.incl ? 1 : 0];
       return internal ? [...base, r.range || '', r.f || '', r.note || ''] : base;
     }),
     cats: internal ? null : t.rows.reduce((m, r) => { m[r.catName] = (m[r.catName] || 0) + (r.amt || 0); return m; }, {}),

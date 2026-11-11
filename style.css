@@ -1776,3 +1776,23 @@ body.sheet-mode .wrap { max-width: 1680px; padding-left: 16px; padding-right: 16
 .xs-duptoggle { margin-left: 6px; padding: 2px 8px; border: 1px solid #9ca3af; border-radius: 4px; background: #fff; color: #374151; font: inherit; font-size: 11.5px; cursor: pointer; }
 tr.dup td { opacity: .6; }
 .xs-dup { color: #b45309; font-weight: 700; }
+
+/* ── 엑셀 배치: 견적가 | 원가 | 상세내역 나란히 (견적가는 통비용이면 합친 칸) ── */
+.xs-sheet { min-width: 960px; }
+.xs-scroll > .xs-table { min-width: 1120px; }
+.xs-table .c-proc { width: 92px; } .xs-table .c-item { width: 118px; } .xs-table .c-price { width: 118px; }
+.xs-table .c-cost { width: 104px; } .xs-table .c-memo { width: 210px; } .xs-table .c-ox { width: 60px; } .xs-table .c-note { width: 150px; }
+.xs-sheet td.xs-price { background: #fff8d6; vertical-align: middle; border-right: 2px solid #c9a227; }
+.xs-sheet td.xs-price .xs-money { font-weight: 800; font-size: 14px; color: #111; text-align: center; }
+.xs-sheet td.xs-price.none { background: #f3f4f6; }
+.xs-sheet td.xs-costcell { vertical-align: middle; }
+.xs-grp { margin-top: 2px; font-size: 10.5px; color: #8a6d00; text-align: center; }
+.xs-row.incl td.xs-desc, .xs-row.incl td.xs-item { color: #374151; }
+.xs-ptot { margin-top: 6px; font-size: 11.5px; font-weight: 800; color: #1f3864; }
+.xs-ptot .xs-tot-cost { white-space: normal; line-height: 1.35; }
+.xs-split { display: inline-block; margin: 3px 0 0 4px; padding: 1px 6px; border: 1px solid #c4c9d4; border-radius: 4px; background: #fff; color: #4b5563; font: inherit; font-size: 10.5px; cursor: pointer; white-space: nowrap; }
+.xs-split:hover { border-color: #1f3864; color: #1f3864; }
+@media print { .xs-split, .xs-ptot { display: none !important; } }
+.xs-row .xs-split { opacity: 0; transition: opacity .12s; }
+.xs-row:hover .xs-split, .xs-split:focus { opacity: 1; }
+@media (hover: none) { .xs-row .xs-split { opacity: 1; } }
