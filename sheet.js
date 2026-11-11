@@ -79,7 +79,8 @@ function renderSheet() {
         <td class="xs-item">${esc(i.n)}${i.p != null && typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${i.bd ? ' on' : ''}" onclick="openBreakdown('b',${bi},${ii})" title="자재·인건비 내역으로 계산">${i.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
         <td class="xs-desc">${esc(i.d)}</td>
         ${priceCell}
-        ${costIn('b', bi, ii, i, i.n)}
+        ${(() => { const [cTd, mTd] = costIn('b', bi, ii, i, i.n).split(/(?<=<\/td>)/);
+          return cTd + (span[ii] ? `<td class="xs-mg xs-int" rowspan="${span[ii]}" id="xs-mg-${bi}-${ii}"></td>` : '') + mTd; })()}
         <td class="xs-in xs-oxcell">${ox(i.on, `xsBaseOX(${bi},${ii},this.value)`)}</td>
         <td class="xs-note">${esc(parts.join(' · '))}${tools}</td>
       </tr>`;
@@ -95,7 +96,7 @@ function renderSheet() {
       <td class="xs-item">${esc(o.n)}${typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${o.bd ? ' on' : ''}" onclick="openBreakdown('o',-1,${oi})" title="자재·인건비 내역으로 계산">${o.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
       <td class="xs-desc">${esc(o.d)}</td>
       <td class="xs-in xs-num xs-price">${money(o.p, `xsOptAmt(${oi},this.value)`, o.n + ' 견적가')}</td>
-      ${costIn('o', -1, oi, o, o.n)}
+      ${(() => { const [cTd, mTd] = costIn('o', -1, oi, o, o.n).split(/(?<=<\/td>)/); return cTd + `<td class="xs-mg xs-int" id="xs-mgo-${oi}"></td>` + mTd; })()}
       <td class="xs-in xs-oxcell">${ox(o.on, `xsOptOX(${oi},this.value)`)}</td>
       <td class="xs-note">${dupOf[oi] ? `<b class="xs-dup">기본 공사 「${esc(dupOf[oi])}」에 있음</b> · ` : ''}${esc(o.f)}</td>
     </tr>`).join('');
@@ -136,18 +137,18 @@ function renderSheet() {
     <h3 class="xs-sec">Ⅰ. 기본 공사 <span>— 안 하는 항목은 적용 칸을 X로 바꾸면 빠집니다</span></h3>
     <p class="xs-hint">🔒 <b>원가·상세내역</b> 칸은 내부용입니다 (고객 공유·견적서 출력에 안 나감). 기존 엑셀 「원가」 열의 중간값을 넣어 두었고, 지난 견적에서 원가가 다른 줄에 몰려 적혀 맞지 않는 공정은 비워 두고 상세내역에 「지난 원가」로 적어 두었어요. 현장마다 고쳐 쓰세요. (상세내역 예: 「2명300+6」, 「목수 6품」, 「2칸 방수 40만」)</p>
     <div class="xs-scroll"><table class="xs-table xs-base">
-      <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-price"><col class="c-cost"><col class="c-memo"><col class="c-ox"><col class="c-note"></colgroup>
-      <thead><tr><th>품명</th><th>항목</th><th>내 용</th><th>견적가<br><small>(고객에게 보임)</small></th><th class="xs-int">원가 🔒</th><th class="xs-int">상세내역 🔒</th><th>적용<br>(O/X)</th><th>비고 · 통비용/나눔</th></tr></thead>
+      <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-price"><col class="c-cost"><col class="c-mg"><col class="c-memo"><col class="c-ox"><col class="c-note"></colgroup>
+      <thead><tr><th>품명</th><th>항목</th><th>내 용</th><th>견적가<br><small>(고객에게 보임)</small></th><th class="xs-int">원가 🔒</th><th class="xs-int">원가 합 · 마진 🔒<br><small>(견적가 칸마다)</small></th><th class="xs-int">상세내역 🔒</th><th>적용<br>(O/X)</th><th>비고 · 통비용/나눔</th></tr></thead>
       <tbody>${baseRows}</tbody>
-      <tfoot><tr class="xs-sub"><td colspan="3">A. 기본 공사 소계</td><td class="xs-num" id="xs-A"></td><td class="xs-num xs-int" id="xs-A-cost"></td><td class="xs-int" id="xs-A-margin"></td><td colspan="2"></td></tr></tfoot>
+      <tfoot><tr class="xs-sub"><td colspan="3">A. 기본 공사 소계</td><td class="xs-num" id="xs-A"></td><td class="xs-num xs-int" id="xs-A-cost"></td><td class="xs-mg xs-int" id="xs-A-margin"></td><td></td><td colspan="2"></td></tr></tfoot>
     </table></div>
 
     <h3 class="xs-sec">Ⅱ. 선택 옵션 <span>— 적용 칸에 O를 넣으면 견적가에 들어갑니다</span></h3>
     <div class="xs-scroll"><table class="xs-table xs-opt">
-      <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-price"><col class="c-cost"><col class="c-memo"><col class="c-ox"><col class="c-note"></colgroup>
-      <thead><tr><th>구분</th><th>항목</th><th>내 용</th><th>견적가</th><th class="xs-int">원가 🔒</th><th class="xs-int">상세내역 🔒</th><th>적용<br>(O/X)</th><th>포함 빈도 · 근거</th></tr></thead>
+      <colgroup><col class="c-proc"><col class="c-item"><col><col class="c-price"><col class="c-cost"><col class="c-mg"><col class="c-memo"><col class="c-ox"><col class="c-note"></colgroup>
+      <thead><tr><th>구분</th><th>항목</th><th>내 용</th><th>견적가</th><th class="xs-int">원가 🔒</th><th class="xs-int">원가 합 · 마진 🔒<br><small>(견적가 칸마다)</small></th><th class="xs-int">상세내역 🔒</th><th>적용<br>(O/X)</th><th>포함 빈도 · 근거</th></tr></thead>
       <tbody>${optRows}</tbody>
-      <tfoot><tr class="xs-sub"><td colspan="3">B. 선택 옵션 소계 <small>(적용 O만)</small></td><td class="xs-num" id="xs-B"></td><td class="xs-num xs-int" id="xs-B-cost"></td><td class="xs-int" id="xs-B-margin"></td><td colspan="2"></td></tr></tfoot>
+      <tfoot><tr class="xs-sub"><td colspan="3">B. 선택 옵션 소계 <small>(적용 O만)</small></td><td class="xs-num" id="xs-B"></td><td class="xs-num xs-int" id="xs-B-cost"></td><td class="xs-mg xs-int" id="xs-B-margin"></td><td></td><td colspan="2"></td></tr></tfoot>
     </table>${dupNote}</div>
 
     <h3 class="xs-sec">Ⅲ. 특이사항 (현장 조건) <span>— 해당하는 줄에 수량만 넣으세요</span></h3>
@@ -229,8 +230,23 @@ function xsFill() {
   });
   tplState.options.forEach(o => { if (o.on) BC += Number(o.c) || 0; });
   const setH = (id, h) => { const e = document.getElementById(id); if (e) e.innerHTML = h; };
-  setH('xs-A-cost', AC ? fmt(AC) : ''); setH('xs-A-margin', AC ? `이익 ${fmt(A - AC)} (${xsPct(A, AC)})` : '');
-  setH('xs-B-cost', BC ? fmt(BC) : ''); setH('xs-B-margin', BC ? `이익 ${fmt(B - BC)} (${xsPct(B, BC)})` : '');
+  setH('xs-A-cost', AC ? fmt(AC) : ''); setH('xs-A-margin', AC ? xsMgHtml(A, AC, true) : '');
+  setH('xs-B-cost', BC ? fmt(BC) : ''); setH('xs-B-margin', BC ? xsMgHtml(B, BC, true) : '');
+  // 견적가 칸마다 원가 합 · 마진 (통비용이면 묶인 줄 원가를 모두 더함)
+  let noCost = 0;
+  tplState.blocks.forEach((b, bi) => {
+    const span = xsGroupSpans(b);
+    span.forEach((n, ii) => {
+      if (!n) return;
+      const grp = b.items.slice(ii, ii + n).filter(x => x.on);
+      const price = b.items[ii].on && b.items[ii].p != null ? b.items[ii].p : 0;
+      const cost = grp.reduce((t, x) => t + (Number(x.c) || 0), 0);
+      if (price > 0 && !grp.some(x => x.c != null)) noCost++;
+      setH(`xs-mg-${bi}-${ii}`, xsMgHtml(price, cost, false, grp.some(x => x.c != null)));
+    });
+  });
+  if (AC && noCost) setH('xs-A-margin', xsMgHtml(A, AC, true) + `<div class="xs-mg-none">원가 미입력 ${noCost}칸 포함 — 실제 마진은 더 낮음</div>`);
+  tplState.options.forEach((o, oi) => setH(`xs-mgo-${oi}`, o.on ? xsMgHtml(o.p || 0, Number(o.c) || 0, false, o.c != null) : ''));
   const t = calcTotals();
   const fee = t.sub - (A + B + C);
   const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = fmt(v); };
@@ -296,6 +312,13 @@ function xsMerge(bi, ii) {
   showToast(`⤴ 「${it.n}」 금액을 「${items[h].n}」 통비용에 합쳤어요`);
 }
 function xsChanged() { xsFill(); calc(); }
+// 원가 합 · 마진 칸 내용 — 원가가 하나도 없으면 「원가 미입력」
+function xsMgHtml(price, cost, total, hasCost = true) {
+  if (!hasCost) return price ? '<span class="xs-mg-none">원가 미입력</span>' : '';
+  const m = price - cost, pct = price > 0 ? Math.round(m / price * 100) : 0;
+  const cls = m < 0 ? 'bad' : pct < 15 ? 'low' : 'ok';
+  return `<div class="xs-mg-c">${total ? '원가 합 ' : '원가 '}${fmt(cost)}</div><div class="xs-mg-m ${cls}">마진 ${fmt(m)}<b>${price > 0 ? pct + '%' : '-'}</b></div>`;
+}
 const xsPct = (price, cost) => price > 0 ? Math.round((price - cost) / price * 100) + '%' : '-';
 const xsLine = (k, bi, ii) => k === 'o' ? tplState.options[ii] : tplState.blocks[bi].items[ii];
 function xsCost(k, bi, ii, v) {

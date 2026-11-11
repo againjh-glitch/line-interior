@@ -1847,3 +1847,16 @@ tr.dup td { opacity: .6; }
 .qx .qx-c-amt { width: 16% !important; } .qx .qx-c-item { width: 13% !important; }
 .qx .qfoot-val, .qx .qx-amt, .qcontract-table .qc-val { white-space: nowrap; }
 .qx .qfoot-total .qfoot-val { font-size: 11.5px !important; letter-spacing: -.2px; }
+
+/* ── 원가 합 · 마진 칸 (견적가 칸마다, 내부용) ── */
+.xs-table .c-mg { width: 142px; }
+.xs-sheet td.xs-mg { background: #fff3d6; vertical-align: middle; text-align: right; padding: 4px 8px; border-right: 2px solid #c9a227; font-variant-numeric: tabular-nums; }
+.xs-mg-c { font-size: 11.5px; color: #4a3200; }
+.xs-mg-m { margin-top: 2px; font-size: 12px; font-weight: 800; color: #15803d; white-space: nowrap; }
+.xs-mg-m b { margin-left: 5px; padding: 0 5px; border-radius: 8px; background: #dcfce7; font-size: 11px; }
+.xs-mg-m.low { color: #b45309; } .xs-mg-m.low b { background: #fef3c7; }
+.xs-mg-m.bad { color: #b91c1c; } .xs-mg-m.bad b { background: #fee2e2; }
+.xs-mg-none { font-size: 11px; color: #9ca3af; }
+tfoot .xs-mg { background: #fde9b8 !important; }
+.xs-scroll > .xs-table { min-width: 1240px; }
+@media print { .xs-mg { display: none !important; } }
