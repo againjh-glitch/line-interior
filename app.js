@@ -110,7 +110,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initItemEvents(); // 이벤트 위임 — wrap에 딱 한 번만 등록
   document.getElementById('pyung').addEventListener('input', onPyungChange);
   document.getElementById('btn-reset').addEventListener('click', resetAll);
-  document.getElementById('btn-excel').addEventListener('click', downloadExcel);
+  // 기본 견적서(시트)는 기존 엑셀 견적서 양식으로 손님용/업체용, 일반 계산기는 예전 엑셀 저장
+  document.getElementById('btn-excel').addEventListener('click', () => typeof downloadLineExcel === 'function' ? downloadLineExcel('customer') : downloadExcel());
+  document.getElementById('btn-excel-vendor')?.addEventListener('click', () => typeof downloadLineExcel === 'function' ? downloadLineExcel('vendor') : downloadExcel());
   document.getElementById('btn-print-detail').addEventListener('click', () => { setPrintMode('detail'); window.print(); });
   document.getElementById('btn-print-simple').addEventListener('click', () => { setPrintMode('simple'); window.print(); });
   document.getElementById('btn-save').addEventListener('click', saveQuote);

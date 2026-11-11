@@ -1796,3 +1796,6 @@ tr.dup td { opacity: .6; }
 .xs-row .xs-split { opacity: 0; transition: opacity .12s; }
 .xs-row:hover .xs-split, .xs-split:focus { opacity: 1; }
 @media (hover: none) { .xs-row .xs-split { opacity: 1; } }
+/* 출력 버튼: 다크 모드에서 「상세 견적서」가 흰 바탕·흰 글자로 안 보이던 것 고정색으로 */
+.btn-print-detail { background: #1c1917; color: #fff; }
+.btn-excel-vendor { background: #7a4b00; color: #fff; }
