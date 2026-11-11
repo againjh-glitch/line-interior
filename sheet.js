@@ -72,14 +72,17 @@ function renderSheet() {
           ? `<button class="xs-split" onclick="xsMerge(${bi},${ii})" title="이 줄 금액을 윗줄 금액에 합쳐 통비용으로">⤴ 윗줄에 합치기</button>` : '');
       const priceCell = span[ii] === 0 ? ''
         : i.p == null ? `<td class="xs-price none" rowspan="${span[ii]}"></td>`
-        : `<td class="xs-in xs-num xs-price" rowspan="${span[ii]}">${money(i.p, `xsBaseAmt(${bi},${ii},this.value)`, i.n + ' 견적가')}
-            ${span[ii] > 1 ? `<div class="xs-grp">${span[ii]}줄 통비용</div>` : ''}</td>`;
+        : `<td class="xs-in xs-num xs-price" rowspan="${span[ii]}" data-pb="${bi}" data-pa="${ii}" data-pz="${ii + span[ii] - 1}">${money(i.p, `xsBaseAmt(${bi},${ii},this.value)`, i.n + ' 견적가')}
+            ${span[ii] > 1 ? `<div class="xs-grp">${span[ii]}줄 통비용</div>` : ''}
+            <div class="xs-cellops">${span[ii] > 1 ? `<button onclick="xsUnmerge(${bi},${ii})" title="합쳐진 칸을 줄마다 따로 금액으로 (원가 비율로 나눔)">✂ 나누기</button>` : ''}${b.items.slice(0, ii).some(x => x.p != null)
+              ? `<button onclick="xsMergeRange(${bi},${ii - 1},${ii + span[ii] - 1})" title="위 칸과 합쳐 통비용 한 칸으로">⤴ 위와 합치기</button>` : ''}</div></td>`;
       return `<tr class="xs-row${i.on ? '' : ' x'}${i.p == null ? ' incl' : ''}${ii === 0 ? ' xs-bstart' : ''}${ii === b.items.length - 1 ? ' xs-bend' : ''}" data-k="b" data-b="${bi}" data-i="${ii}">
         ${ii === 0 ? `<td class="xs-proc" rowspan="${b.items.length}">${esc(b.proc)}${b.proc === '가구' && typeof openFurn === 'function'
           ? `<button class="xs-furn-btn" onclick="openFurn()" title="싱크대·붙박이장 사이즈로 예상 견적">🧮 사이즈로<br>계산</button>` : ''}${b.proc === '도배·바닥재' && typeof openVendor === 'function'
           ? `<button class="xs-furn-btn vd" onclick="openVendor('바닥재')" title="업체 바닥재 단가에서 고르기">📒 바닥재<br>고르기</button>` : ''}
+          <button class="xs-add-btn" onclick="xsAddItem(${bi})" title="「${esc(b.proc)}」에 항목 한 줄 추가">＋ 항목 추가</button>
           <div class="xs-ptot" id="xs-tot-${bi}"></div></td>` : ''}
-        <td class="xs-item">${esc(i.n)}${i.p != null && typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${i.bd ? ' on' : ''}" onclick="openBreakdown('b',${bi},${ii})" title="자재·인건비 내역으로 계산">${i.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
+        <td class="xs-item"><textarea class="xs-ntitle" rows="1" data-v="${esc(i.n)}" oninput="xsAutoH(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}" onchange="xsName(${bi},${ii},this.value)" aria-label="항목 이름" placeholder="항목 이름">${esc(i.n)}</textarea><button class="xs-del" onclick="xsDelItem(${bi},${ii})" title="이 줄 지우기">✕</button>${i.p != null && typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${i.bd ? ' on' : ''}" onclick="openBreakdown('b',${bi},${ii})" title="자재·인건비 내역으로 계산">${i.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
         <td class="xs-in xs-desc">${descIn('b', bi, ii, i.d, i.n)}</td>
         ${priceCell}
         ${(() => { const [cTd, mTd] = costIn('b', bi, ii, i, i.n).split(/(?<=<\/td>)/);
@@ -96,7 +99,7 @@ function renderSheet() {
   const hidden = tplState.options.filter((o, oi) => dupOf[oi]);
   const optRows = tplState.options.map((o, oi) => dupOf[oi] && !xsShowDupOpts ? '' : `<tr class="xs-row${o.on ? '' : ' off'}${dupOf[oi] ? ' dup' : ''}" data-k="o" data-i="${oi}">
       <td class="xs-proc sm">선택</td>
-      <td class="xs-item">${esc(o.n)}${typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${o.bd ? ' on' : ''}" onclick="openBreakdown('o',-1,${oi})" title="자재·인건비 내역으로 계산">${o.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
+      <td class="xs-item"><textarea class="xs-ntitle" rows="1" data-v="${esc(o.n)}" oninput="xsAutoH(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}" onchange="tplState.options[${oi}].n=this.value.trim();calc()" aria-label="옵션 이름" placeholder="옵션 이름">${esc(o.n)}</textarea>${typeof openBreakdown === 'function' ? `<button class="xs-bd-btn${o.bd ? ' on' : ''}" onclick="openBreakdown('o',-1,${oi})" title="자재·인건비 내역으로 계산">${o.bd ? '🧮 내역' : '🧮'}</button>` : ''}</td>
       <td class="xs-in xs-desc">${descIn('o', -1, oi, o.d, o.n)}</td>
       <td class="xs-in xs-num xs-price">${money(o.p, `xsOptAmt(${oi},this.value)`, o.n + ' 견적가')}</td>
       ${(() => { const [cTd, mTd] = costIn('o', -1, oi, o, o.n).split(/(?<=<\/td>)/); return cTd + mTd + `<td class="xs-mg xs-int" id="xs-mgo-${oi}"></td>`; })()}
@@ -316,6 +319,75 @@ function xsMerge(bi, ii) {
   renderTpl(); calc();
   showToast(`⤴ 「${it.n}」 금액을 「${items[h].n}」 통비용에 합쳤어요`);
 }
+// ── 엑셀처럼 견적가 칸 합치기 / 나누기 ──
+//  · 견적가 칸을 마우스로 끌어서(또는 Shift+클릭) 여러 칸 선택 → 「셀 합치기」
+//  · 합쳐진 칸 → 「✂ 나누기」 (원가가 있으면 원가 비율로, 없으면 첫 줄에 금액)
+function xsGroupOf(bi, ii) { // ii 줄이 속한 칸 [첫 줄, 끝 줄]
+  const items = tplState.blocks[bi].items, span = xsGroupSpans(tplState.blocks[bi]);
+  let a = ii; while (a > 0 && span[a] === 0) a--;
+  return [a, a + Math.max(span[a], 1) - 1];
+}
+function xsMergeRange(bi, from, to) {
+  const items = tplState.blocks[bi].items;
+  const a = xsGroupOf(bi, Math.min(from, to))[0], z = xsGroupOf(bi, Math.max(from, to))[1];
+  if (a === z || xsGroupOf(bi, a)[1] >= z) return;
+  const part = items.slice(a, z + 1);
+  const sum = part.reduce((t, x) => t + (x.p != null && x.on ? Number(x.p) || 0 : 0), 0);
+  part.forEach((x, k) => { x.p = k === 0 ? sum : null; if (sum || x.on) x.on = true; });
+  xsSelClear(); renderTpl(); calc();
+  showToast(`⤴ ${part.length}줄을 견적가 한 칸(${fmt(sum)}원)으로 합쳤어요`);
+}
+function xsUnmerge(bi, ii) {
+  const items = tplState.blocks[bi].items, [a, z] = xsGroupOf(bi, ii);
+  if (a === z) return;
+  const part = items.slice(a, z + 1), total = Number(items[a].p) || 0;
+  const costSum = part.reduce((t, x) => t + (Number(x.c) || 0), 0);
+  let rest = total;
+  part.forEach((x, k) => {
+    if (k === 0) return;
+    x.p = costSum > 0 && total > 0 ? Math.round(total * (Number(x.c) || 0) / costSum / 10000) * 10000 : 0;
+    rest -= x.p;
+  });
+  items[a].p = rest;
+  xsSelClear(); renderTpl(); calc();
+  showToast(costSum > 0 ? `✂ ${part.length}줄로 나눴어요 — 원가 비율로 나눴으니 금액을 확인하세요 (합계 ${fmt(total)}원 그대로)`
+    : `✂ ${part.length}줄로 나눴어요 — 첫 줄에 ${fmt(total)}원, 나머지는 0원이에요. 금액을 넣고 첫 줄에서 빼 주세요`);
+}
+// 선택 (끌기 · Shift+클릭)
+let xsSel = null, xsDrag = false;
+function xsSelClear() { xsSel = null; xsSelPaint(); }
+function xsSelPaint() {
+  document.querySelectorAll('td.xs-price.sel').forEach(td => td.classList.remove('sel'));
+  let bar = document.getElementById('xs-selbar');
+  if (!xsSel || xsSel.a === xsSel.z && xsGroupOf(xsSel.bi, xsSel.a)[1] === xsSel.z) { bar?.remove(); return; }
+  const lo = Math.min(xsSel.a, xsSel.z), hi = Math.max(xsSel.a, xsSel.z);
+  const cells = [...document.querySelectorAll(`td.xs-price[data-pb="${xsSel.bi}"]`)].filter(td => +td.dataset.pz >= lo && +td.dataset.pa <= hi);
+  cells.forEach(td => td.classList.add('sel'));
+  if (cells.length < 2) { bar?.remove(); return; }
+  const items = tplState.blocks[xsSel.bi].items;
+  const sum = cells.reduce((t, td) => t + (items[+td.dataset.pa].on ? Number(items[+td.dataset.pa].p) || 0 : 0), 0);
+  if (!bar) { bar = document.createElement('div'); bar.id = 'xs-selbar'; document.body.appendChild(bar); }
+  bar.innerHTML = `<b>${cells.length}칸 선택</b> · 합계 ${fmt(sum)}원
+    <button class="go" onclick="xsMergeRange(${xsSel.bi},${+cells[0].dataset.pa},${+cells[cells.length - 1].dataset.pz})">⤴ 셀 합치기</button>
+    <button onclick="xsSelClear()">취소</button>`;
+  const r = cells[cells.length - 1].getBoundingClientRect();
+  bar.style.top = (window.scrollY + r.bottom + 6) + 'px'; bar.style.left = (window.scrollX + r.left - 40) + 'px';
+}
+document.addEventListener('mousedown', e => {
+  const td = e.target.closest?.('td.xs-price[data-pb]');
+  if (e.target.closest?.('#xs-selbar, .xs-cellops')) return;
+  if (!td) { if (xsSel) xsSelClear(); return; }
+  const bi = +td.dataset.pb, row = +td.dataset.pa;
+  if (e.shiftKey && xsSel && xsSel.bi === bi) { e.preventDefault(); xsSel.z = row; xsSelPaint(); return; }
+  if (e.target.tagName === 'INPUT') { if (xsSel) xsSelClear(); return; } // 금액 입력은 그대로
+  e.preventDefault(); xsSel = { bi, a: row, z: row }; xsDrag = true; xsSelPaint();
+});
+document.addEventListener('mouseover', e => {
+  if (!xsDrag || !xsSel) return;
+  const td = e.target.closest?.('td.xs-price[data-pb]');
+  if (td && +td.dataset.pb === xsSel.bi) { xsSel.z = +td.dataset.pa; xsSelPaint(); }
+});
+document.addEventListener('mouseup', () => { xsDrag = false; });
 function xsChanged() { xsFill(); calc(); }
 // 원가 합 · 마진 칸 내용 — 원가가 하나도 없으면 「원가 미입력」
 function xsMgHtml(price, cost, total, hasCost = true) {
@@ -331,10 +403,27 @@ function xsCost(k, bi, ii, v) {
   x.c = String(v).trim() === '' ? null : parseWon(v);
   xsChanged();
 }
+// ＋ 항목 추가 — 공정 맨 아래에 따로 금액 줄을 하나 넣고 이름 칸으로 바로 이동
+function xsAddItem(bi) {
+  const b = tplState.blocks[bi];
+  b.items.push({ n: '', d: '', p: 0, f: '', note: '', on: true, c: null, m: '' });
+  renderTpl(); calc();
+  setTimeout(() => document.querySelector(`tr[data-b="${bi}"][data-i="${b.items.length - 1}"] .xs-ntitle`)?.focus(), 30);
+}
+function xsName(bi, ii, v) { tplState.blocks[bi].items[ii].n = v.trim(); calc(); }
+function xsDelItem(bi, ii) {
+  const b = tplState.blocks[bi], it = b.items[ii];
+  if (b.items.length === 1) { alert('공정에 줄이 하나뿐이라 지울 수 없어요. 빼려면 적용 칸을 X로 바꾸세요.'); return; }
+  if ((it.n || it.d || it.p) && !confirm(`「${it.n || '이름 없는 줄'}」 줄을 지울까요?`)) return;
+  // 금액 줄을 지우면 아래 「포함」 줄들은 다음 줄이 금액을 이어받음
+  if (it.p != null && b.items[ii + 1] && b.items[ii + 1].p == null && !b.items.slice(0, ii).some(x => x.p != null)) b.items[ii + 1].p = it.p;
+  b.items.splice(ii, 1);
+  renderTpl(); calc();
+}
 function xsDesc(k, bi, ii, v) { xsLine(k, bi, ii).d = v.trim(); calc(); }
 function xsNote(k, bi, ii, v) { xsLine(k, bi, ii).note = v.trim(); calc(); }
 function xsAutoH(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
-function xsAutoAll() { document.querySelectorAll('.xs-table textarea.xs-dtext, .xs-table textarea.xs-ntext').forEach(xsAutoH); }
+function xsAutoAll() { document.querySelectorAll('.xs-table textarea.xs-dtext, .xs-table textarea.xs-ntext, .xs-table textarea.xs-ntitle').forEach(xsAutoH); }
 function xsMemo(k, bi, ii, v) { xsLine(k, bi, ii).m = v.trim(); calc(); }
 
 /* ── 입력 처리 ── */
