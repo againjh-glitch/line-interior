@@ -337,7 +337,7 @@ function xsMergeRange(bi, from, to) {
   xsSelClear(); renderTpl(); calc();
   showToast(`⤴ ${part.length}줄을 견적가 한 칸(${fmt(sum)}원)으로 합쳤어요`);
 }
-function xsUnmerge(bi, ii) {
+function xsUnmerge(bi, ii, quiet) {
   const items = tplState.blocks[bi].items, [a, z] = xsGroupOf(bi, ii);
   if (a === z) return;
   const part = items.slice(a, z + 1), total = Number(items[a].p) || 0;
@@ -349,45 +349,87 @@ function xsUnmerge(bi, ii) {
     rest -= x.p;
   });
   items[a].p = rest;
+  if (quiet) return;
   xsSelClear(); renderTpl(); calc();
   showToast(costSum > 0 ? `✂ ${part.length}줄로 나눴어요 — 원가 비율로 나눴으니 금액을 확인하세요 (합계 ${fmt(total)}원 그대로)`
     : `✂ ${part.length}줄로 나눴어요 — 첫 줄에 ${fmt(total)}원, 나머지는 0원이에요. 금액을 넣고 첫 줄에서 빼 주세요`);
 }
-// 선택 (끌기 · Shift+클릭)
-let xsSel = null, xsDrag = false;
+// 선택 — 엑셀처럼 견적가·항목 칸을 끌어서(드래그) 고르기, Shift+클릭으로 넓히기, 칸 하나만 눌러도 선택
+let xsSel = null, xsDrag = null;
 function xsSelClear() { xsSel = null; xsSelPaint(); }
+function xsRowAt(el) { // 마우스 아래 줄 → {bi, row}
+  const tr = el?.closest?.('.xs-sheet tr.xs-row[data-k="b"]');
+  if (!tr) return null;
+  const td = el.closest('td.xs-price[data-pb]');
+  return td ? { bi: +td.dataset.pb, row: +td.dataset.pa } : { bi: +tr.dataset.b, row: +tr.dataset.i };
+}
 function xsSelPaint() {
-  document.querySelectorAll('td.xs-price.sel').forEach(td => td.classList.remove('sel'));
+  document.querySelectorAll('.xs-sheet .sel').forEach(x => x.classList.remove('sel'));
   let bar = document.getElementById('xs-selbar');
-  if (!xsSel || xsSel.a === xsSel.z && xsGroupOf(xsSel.bi, xsSel.a)[1] === xsSel.z) { bar?.remove(); return; }
+  if (!xsSel) { bar?.remove(); return; }
   const lo = Math.min(xsSel.a, xsSel.z), hi = Math.max(xsSel.a, xsSel.z);
   const cells = [...document.querySelectorAll(`td.xs-price[data-pb="${xsSel.bi}"]`)].filter(td => +td.dataset.pz >= lo && +td.dataset.pa <= hi);
+  if (!cells.length) { bar?.remove(); return; }
+  const first = +cells[0].dataset.pa, last = +cells[cells.length - 1].dataset.pz;
   cells.forEach(td => td.classList.add('sel'));
-  if (cells.length < 2) { bar?.remove(); return; }
+  document.querySelectorAll(`.xs-sheet tr.xs-row[data-k="b"][data-b="${xsSel.bi}"]`).forEach(tr => { if (+tr.dataset.i >= first && +tr.dataset.i <= last) tr.classList.add('sel'); });
   const items = tplState.blocks[xsSel.bi].items;
   const sum = cells.reduce((t, td) => t + (items[+td.dataset.pa].on ? Number(items[+td.dataset.pa].p) || 0 : 0), 0);
+  const merged = cells.filter(td => +td.dataset.pz > +td.dataset.pa);
   if (!bar) { bar = document.createElement('div'); bar.id = 'xs-selbar'; document.body.appendChild(bar); }
-  bar.innerHTML = `<b>${cells.length}칸 선택</b> · 합계 ${fmt(sum)}원
-    <button class="go" onclick="xsMergeRange(${xsSel.bi},${+cells[0].dataset.pa},${+cells[cells.length - 1].dataset.pz})">⤴ 셀 합치기</button>
+  bar.innerHTML = `<b>${last - first + 1}줄 · ${cells.length}칸 선택</b> · 합계 ${fmt(sum)}원
+    ${cells.length > 1 ? `<button class="go" onclick="xsMergeRange(${xsSel.bi},${first},${last})">⤴ 셀 합치기</button>` : ''}
+    ${merged.length ? `<button class="go2" onclick="xsUnmergeSel()">✂ 셀 나누기</button>` : ''}
+    ${cells.length < 2 && !merged.length ? '<span class="hint">아래로 끌어서 여러 칸을 고르세요</span>' : ''}
     <button onclick="xsSelClear()">취소</button>`;
   const r = cells[cells.length - 1].getBoundingClientRect();
-  bar.style.top = (window.scrollY + r.bottom + 6) + 'px'; bar.style.left = (window.scrollX + r.left - 40) + 'px';
+  bar.style.top = (window.scrollY + r.bottom + 6) + 'px'; bar.style.left = (window.scrollX + Math.max(8, r.left - 120)) + 'px';
 }
-document.addEventListener('mousedown', e => {
-  const td = e.target.closest?.('td.xs-price[data-pb]');
-  if (e.target.closest?.('#xs-selbar, .xs-cellops')) return;
+function xsUnmergeSel() { // 고른 칸 중 합쳐진 칸 모두 나누기
+  if (!xsSel) return;
+  const lo = Math.min(xsSel.a, xsSel.z), hi = Math.max(xsSel.a, xsSel.z), bi = xsSel.bi;
+  const heads = [...document.querySelectorAll(`td.xs-price[data-pb="${bi}"]`)].filter(td => +td.dataset.pz >= lo && +td.dataset.pa <= hi && +td.dataset.pz > +td.dataset.pa).map(td => +td.dataset.pa);
+  heads.reverse().forEach(h => xsUnmerge(bi, h, true));
+  xsSelClear(); renderTpl(); calc();
+  showToast(`✂ ${heads.length}칸을 줄마다 따로 금액으로 나눴어요 — 원가 비율로 나눴으니 금액을 확인하세요 (합계 그대로)`);
+}
+// 끌기: 견적가 칸 또는 「항목」 칸에서 누른 채 아래로 — 숫자·글자 위에서 시작해도 됨
+document.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || e.target.closest?.('#xs-selbar, button, select, .xs-dtext, .xs-ntext, .xs-memo')) return;
+  const td = e.target.closest?.('.xs-sheet td.xs-price[data-pb], .xs-sheet tr.xs-row[data-k="b"] td.xs-item, .xs-sheet tr.xs-row[data-k="b"] td.xs-costcell');
   if (!td) { if (xsSel) xsSelClear(); return; }
-  const bi = +td.dataset.pb, row = +td.dataset.pa;
-  if (e.shiftKey && xsSel && xsSel.bi === bi) { e.preventDefault(); xsSel.z = row; xsSelPaint(); return; }
-  if (e.target.tagName === 'INPUT') { if (xsSel) xsSelClear(); return; } // 금액 입력은 그대로
-  e.preventDefault(); xsSel = { bi, a: row, z: row }; xsDrag = true; xsSelPaint();
+  const at = xsRowAt(td);
+  if (e.shiftKey && xsSel && xsSel.bi === at.bi) { e.preventDefault(); xsSel.z = at.row; xsSelPaint(); return; }
+  const onInput = /INPUT|TEXTAREA/.test(e.target.tagName);
+  if (onInput && document.activeElement === e.target) return; // 이미 입력 중이면 글자 선택 그대로
+  xsDrag = { ...at, x: e.clientX, y: e.clientY, onInput, el: e.target, moved: false };
+  if (!xsDrag.onInput) { e.preventDefault(); xsSel = { bi: at.bi, a: at.row, z: at.row }; xsSelPaint(); }
+  else if (xsSel) xsSelClear();
 });
-document.addEventListener('mouseover', e => {
-  if (!xsDrag || !xsSel) return;
-  const td = e.target.closest?.('td.xs-price[data-pb]');
-  if (td && +td.dataset.pb === xsSel.bi) { xsSel.z = +td.dataset.pa; xsSelPaint(); }
+document.addEventListener('pointermove', e => {
+  if (!xsDrag) return;
+  const at = xsRowAt(document.elementFromPoint(e.clientX, e.clientY));
+  if (!at || at.bi !== xsDrag.bi) return;
+  if (xsDrag.onInput && !xsDrag.moved) {
+    if (at.row === xsDrag.row && Math.abs(e.clientY - xsDrag.y) < 12) return; // 금액 입력하려는 클릭
+    document.activeElement?.blur?.(); window.getSelection()?.removeAllRanges();
+  }
+  xsDrag.moved = true;
+  xsSel = { bi: xsDrag.bi, a: xsDrag.row, z: at.row }; xsSelPaint();
 });
-document.addEventListener('mouseup', () => { xsDrag = false; });
+// 칸 안 숫자·이름 위에서 누르면 바로 입력 대신 「끌기 준비」 — 안 움직이고 떼면 그때 입력칸으로 (텍스트 끌기 방지)
+document.addEventListener('mousedown', e => {
+  if (xsDrag?.onInput && e.target === xsDrag.el && document.activeElement !== xsDrag.el) e.preventDefault();
+}, true);
+document.addEventListener('pointerup', () => {
+  const d = xsDrag; xsDrag = null;
+  if (!d) return;
+  if (d.moved) { window.getSelection()?.removeAllRanges(); return; }
+  if (d.onInput && document.activeElement !== d.el) {
+    d.el.focus();
+    if (d.el.tagName === 'INPUT') d.el.select?.(); else { const n = d.el.value.length; d.el.setSelectionRange?.(n, n); }
+  }
+});
 function xsChanged() { xsFill(); calc(); }
 // 원가 합 · 마진 칸 내용 — 원가가 하나도 없으면 「원가 미입력」
 function xsMgHtml(price, cost, total, hasCost = true) {

@@ -1936,3 +1936,34 @@ td.xs-price:hover .xs-cellops, .xs-cellops:focus-within { opacity: 1; }
 @media print { .xs-cellops, #xs-selbar { display: none !important; } }
 :root[data-theme="dark"] .xs-sheet td.xs-price.sel { background: #1e3a8a !important; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .xs-sheet td.xs-price.sel { background: #1e3a8a !important; } }
+/* 끌어서 선택 (2026-11-11 보완) */
+.xs-sheet tr.xs-row[data-k="b"] td.xs-item, .xs-sheet tr.xs-row[data-k="b"] td.xs-costcell { cursor: cell; }
+.xs-sheet tr.xs-row.sel > td.xs-item, .xs-sheet tr.xs-row.sel > td.xs-desc, .xs-sheet tr.xs-row.sel > td.xs-costcell { background: #eff6ff !important; }
+.xs-sheet.dragging, body:has(#xs-selbar) .xs-sheet td.xs-price { user-select: none; }
+#xs-selbar button.go2 { background: #b45309; border-color: #b45309; font-weight: 700; }
+#xs-selbar .hint { color: #cbd5e1; font-size: 11.5px; }
+:root[data-theme="dark"] .xs-sheet tr.xs-row.sel > td { background: #172554 !important; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .xs-sheet tr.xs-row.sel > td.xs-item, :root:not([data-theme="light"]) .xs-sheet tr.xs-row.sel > td.xs-desc { background: #172554 !important; } }
+
+/* 엑셀처럼 — 도구줄 · 오른쪽 클릭 메뉴 (excel.js) */
+#xl-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
+#xl-bar button { padding: 4px 10px; border: 1px solid #c4c9d4; border-radius: 6px; background: #fff; color: #1f3864; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+#xl-bar button:hover:not(:disabled) { border-color: #1f3864; background: #eef2ff; }
+#xl-bar button:disabled { opacity: .4; cursor: default; }
+#xl-bar .xl-tip { font-size: 11.5px; color: #6b7280; }
+#xl-menu { position: absolute; z-index: 80; min-width: 210px; padding: 5px; border: 1px solid #d1d5db; border-radius: 9px; background: #fff;
+  box-shadow: 0 10px 30px rgba(0,0,0,.18); font-size: 13px; }
+#xl-menu .xl-mh { padding: 4px 9px 6px; font-size: 11.5px; color: #6b7280; font-weight: 700; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#xl-menu button { display: block; width: 100%; padding: 6px 10px; border: 0; border-radius: 6px; background: none; color: #111827; font: inherit; text-align: left; cursor: pointer; }
+#xl-menu button:hover:not(:disabled) { background: #eef2ff; }
+#xl-menu button:disabled { color: #9ca3af; cursor: default; }
+#xl-menu button.danger { color: #b91c1c; }
+#xl-menu hr { border: 0; border-top: 1px solid #e5e7eb; margin: 4px 0; }
+@media print { #xl-bar, #xl-menu { display: none !important; } }
+:root[data-theme="dark"] #xl-bar button, :root[data-theme="dark"] #xl-menu { background: #1f2937; color: #e5e7eb; border-color: #4b5563; }
+:root[data-theme="dark"] #xl-menu button { color: #e5e7eb; }
+:root[data-theme="dark"] #xl-menu button:hover:not(:disabled), :root[data-theme="dark"] #xl-bar button:hover:not(:disabled) { background: #374151; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #xl-bar button, :root:not([data-theme="light"]) #xl-menu { background: #1f2937; color: #e5e7eb; border-color: #4b5563; }
+  :root:not([data-theme="light"]) #xl-menu button { color: #e5e7eb; }
+  :root:not([data-theme="light"]) #xl-menu button:hover:not(:disabled), :root:not([data-theme="light"]) #xl-bar button:hover:not(:disabled) { background: #374151; } }
