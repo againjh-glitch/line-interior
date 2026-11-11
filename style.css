@@ -1882,3 +1882,5 @@ tfoot .xs-mg { background: #fde9b8 !important; }
 .qx .qdoc-footer p { margin: 0 !important; }
 .qx .qdoc-sign { margin-top: 4px !important; font-size: 8.5px !important; }
 .qx .qcontract-table { break-inside: avoid; page-break-inside: avoid; }
+/* 견적서라 「상기와 같이 계약합니다 / 계약자 서명」 줄은 뺌 */
+.quote-doc .qdoc-sign { display: none !important; }
