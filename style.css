@@ -1875,3 +1875,10 @@ tfoot .xs-mg { background: #fde9b8 !important; }
 /* 상세 견적서 인쇄: 품명 칸 공정 합계 숫자 빼고 이름만, 이름은 단어 단위로 줄바꿈 */
 .qx .qx-cattot { display: none !important; }
 .qx .qx-cat { word-break: keep-all; }
+/* 상세 견적서 인쇄: 총 공사 금액이 칸 밖으로 안 나가게, 아래 문구는 작게 한 덩어리로 */
+.qx .qx-c-amt { width: 18% !important; } .qx .qx-c-item { width: 12% !important; }
+.qx .qfoot-total .qfoot-val { font-size: 10.5px !important; letter-spacing: -.3px; padding-left: 3px !important; padding-right: 4px !important; overflow: visible; }
+.qx .qdoc-footer { margin-top: 4px !important; padding-top: 3px !important; font-size: 7.5px !important; line-height: 1.35 !important; break-inside: avoid; page-break-inside: avoid; }
+.qx .qdoc-footer p { margin: 0 !important; }
+.qx .qdoc-sign { margin-top: 4px !important; font-size: 8.5px !important; }
+.qx .qcontract-table { break-inside: avoid; page-break-inside: avoid; }
