@@ -1967,3 +1967,29 @@ td.xs-price:hover .xs-cellops, .xs-cellops:focus-within { opacity: 1; }
   :root:not([data-theme="light"]) #xl-bar button, :root:not([data-theme="light"]) #xl-menu { background: #1f2937; color: #e5e7eb; border-color: #4b5563; }
   :root:not([data-theme="light"]) #xl-menu button { color: #e5e7eb; }
   :root:not([data-theme="light"]) #xl-menu button:hover:not(:disabled), :root:not([data-theme="light"]) #xl-bar button:hover:not(:disabled) { background: #374151; } }
+
+/* 📊 엑셀로 편집 (xlsheet.js) */
+#xl-bar button.xl-big { background: #107c41; border-color: #107c41; color: #fff; padding: 6px 14px; font-size: 13.5px; }
+#xl-bar button.xl-big:hover { background: #0b5e31 !important; border-color: #0b5e31 !important; color: #fff; }
+#xls-ov { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(15,23,42,.55); }
+#xls-ov.on { display: block; }
+body.xls-open { overflow: hidden; }
+.xls-box { position: absolute; inset: 10px; display: flex; flex-direction: column; background: #fff; border-radius: 10px; overflow: hidden; color: #111827; }
+.xls-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 12px; background: #107c41; color: #fff; }
+.xls-title { font-size: 15px; }
+.xls-tools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; flex: 1; }
+.xls-tools button, .xls-btns button { padding: 4px 10px; border: 1px solid rgba(255,255,255,.5); border-radius: 5px; background: rgba(255,255,255,.12); color: #fff; font: inherit; font-size: 12.5px; cursor: pointer; }
+.xls-tools button:hover, .xls-btns button:hover { background: rgba(255,255,255,.28); }
+.xls-tools .sep { width: 1px; height: 18px; background: rgba(255,255,255,.4); margin: 0 4px; }
+.xls-btns { display: flex; gap: 6px; margin-left: auto; }
+.xls-btns button.go { background: #fff; color: #107c41; font-weight: 800; border-color: #fff; }
+.xls-sum { padding: 6px 12px; background: #f0fdf4; border-bottom: 1px solid #d1fae5; font-size: 13px; }
+.xls-sum .neg { color: #b91c1c; }
+.xls-sum small { color: #6b7280; }
+.xls-help { padding: 4px 12px; font-size: 11.5px; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
+.xls-wrap { flex: 1; overflow: auto; padding: 6px; }
+.xls-loading { padding: 40px; text-align: center; color: #6b7280; }
+#xls-sheet td { vertical-align: middle; }
+#xls-sheet .jexcel > tbody > tr > td { white-space: pre-wrap; }
+.jcontextmenu { z-index: 300 !important; }
+.jdropdown-container { z-index: 300 !important; }

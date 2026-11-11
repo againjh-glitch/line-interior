@@ -49,7 +49,8 @@
     if (base && !document.getElementById('xl-bar')) {
       const bar = document.createElement('div');
       bar.id = 'xl-bar';
-      bar.innerHTML = `<button id="xl-undo" onclick="xlUndo()" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>
+      bar.innerHTML = `<button id="xl-sheet" class="xl-big" onclick="openXlSheet()" title="지금 견적을 엑셀 시트로 열어 고치기">📊 엑셀로 편집</button>
+        <button id="xl-undo" onclick="xlUndo()" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>
         <button id="xl-redo" onclick="xlRedo()" title="다시 하기 (Ctrl+Y)">↷ 다시 하기</button>
         <span class="xl-tip">엑셀처럼 — <b>끌어서 선택</b> → 셀 합치기·나누기 · <b>오른쪽 클릭</b> 줄 삽입·삭제·이동 · <b>Enter</b> 아래 칸 · <b>Alt+Enter</b> 줄바꿈 · 엑셀에서 복사해 <b>Ctrl+V</b></span>`;
       base.parentNode.insertBefore(bar, base);
