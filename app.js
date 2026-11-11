@@ -1754,7 +1754,15 @@ function saveQuote() {
   // 지금 견적에 덮어쓰기 — 단, 고객명이 바뀌었으면 다른 고객 견적이므로 새로 저장 (덮어써서 잃어버리지 않게)
   let prev = currentQuoteKey && localStorage.getItem(currentQuoteKey) ? JSON.parse(localStorage.getItem(currentQuoteKey)) : null;
   if (prev && (prev.clientName || '').trim() !== (document.getElementById('clientName').value || '').trim()) prev = null;
-  const key  = prev ? currentQuoteKey : 'quote_' + Date.now();
+  let key = prev ? currentQuoteKey : 'quote_' + Date.now();
+  // 링크로 다시 연 견적 등: 같은 고객명으로 저장된 견적이 있으면 덮어쓸지 물어봄 (같은 견적이 두 개 생기지 않게)
+  if (!prev && name.trim() && name !== '견적') {
+    const same = Object.keys(localStorage).filter(k => k.startsWith('quote_')).sort().reverse()
+      .find(k => { try { return (JSON.parse(localStorage.getItem(k)).clientName || '').trim() === name.trim(); } catch (e) { return false; } });
+    if (same && confirm(`「${name.trim()}」 이름으로 저장된 견적이 이미 있어요.\n그 견적을 지금 내용으로 바꿀까요? (취소하면 새 견적으로 따로 저장)`)) {
+      prev = JSON.parse(localStorage.getItem(same)); key = same;
+    }
+  }
   const snap = getSnapshot();
   snap.label = name + ' (' + new Date().toLocaleDateString('ko-KR') + ')';
   snap.createdAt = prev?.createdAt || prev?.ts || Date.now();
