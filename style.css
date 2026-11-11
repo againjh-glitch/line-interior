@@ -1872,3 +1872,6 @@ tfoot .xs-mg { background: #fde9b8 !important; }
 @media print { .xs-qtabs { display: none !important; } }
 /* 품명 칸의 공정 합계·원가·마진은 빼고 이름만 (원가 합·마진 칸에서 봄) */
 .xs-ptot { display: none !important; }
+/* 상세 견적서 인쇄: 품명 칸 공정 합계 숫자 빼고 이름만, 이름은 단어 단위로 줄바꿈 */
+.qx .qx-cattot { display: none !important; }
+.qx .qx-cat { word-break: keep-all; }
