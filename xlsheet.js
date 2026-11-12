@@ -128,8 +128,10 @@ function xlsSummary() {
   } catch (e) { /* 편집 중 일시 오류 무시 */ }
 }
 
+// 위쪽 버튼을 누르는 순간 시트가 선택을 풀어 버리므로, 마지막으로 고른 범위를 따로 기억
+let xlsLastSel = null;
 function xlsSel() { // [x1,y1,x2,y2]
-  const s = xlsWs?.selectedCell; if (!s) return null;
+  const s = (xlsWs?.selectedCell?.length === 4 ? xlsWs.selectedCell : null) || xlsLastSel; if (!s) return null;
   const [a, b, c, d] = s.map(Number);
   return [Math.min(a, c), Math.min(b, d), Math.max(a, c), Math.max(b, d)];
 }
@@ -190,7 +192,8 @@ async function openXlSheet() {
     </div>`;
     document.body.appendChild(ov);
   }
-  ov.classList.add('on'); document.body.classList.add('xls-open');
+  ov.classList.add('on'); document.body.classList.add('xls-open'); xlsLastSel = null;
+  ov.querySelectorAll('.xls-tools button').forEach(b => b.onmousedown = e => { e.preventDefault(); e.stopPropagation(); });
   const host = document.getElementById('xls-sheet');
   host.innerHTML = '<div class="xls-loading">엑셀 불러오는 중…</div>';
   try { await xlsLoadLib(); } catch (e) {
@@ -218,6 +221,7 @@ async function openXlSheet() {
     minSpareRows: 0, parseFormulas: true, autoIncrement: false,
     text: { areYouSureToDeleteTheSelectedRows: '고른 행을 지울까요?', thisActionWillDestroyAnyExistingMergedCellsAreYouSure: '이 작업을 하면 걸쳐 있는 병합 칸이 풀려요. 계속할까요?', thisActionWillClearYourSearchResultsAreYouSure: '계속할까요?' },
     onchange: () => xlsSummary(), onafterchanges: () => xlsSummary(), oninsertrow: () => xlsSummary(), ondeleterow: () => xlsSummary(),
+    onselection: (el, x1, y1, x2, y2) => { xlsLastSel = [x1, y1, x2, y2]; },
     onmerge: () => xlsSummary(), onundo: () => xlsSummary(), onredo: () => xlsSummary(),
     contextMenu: (obj, x, y) => {
       const items = [];
